@@ -3,7 +3,7 @@
 **Script ref:** `script.md` §1 shot 02 · facts: `research_notes.md` §A (Darwin's finch)
 **Length:** 12s · **Still:** `ce354ebf-25ec-472f-85d8-63d7f574f2e4` · **Video:** `cec11962-9679-4a16-866f-4fb9a8fde7e7`
 **Cast:** David (watching, delighted) · Caw (holding the finch's rejected, too-short twig)
-**Narrator:** Dylan (`b847bc29-f184-583a-8ad9-d1f1e16d1a60`, seed_audio, speech_rate 15, pauses capped at 0.45s)
+**Narrator:** Arthur (`30fc8796-ceb6-4a66-b3a7-4a145ef7f346`, seed_audio, speech_rate 15)
 
 ## Narration (kid-friendly adaptation of the script VO)
 

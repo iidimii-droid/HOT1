@@ -81,3 +81,15 @@ Declined Higgsfield's auto-suggested "IN THE DARK" preset (wrong mood for a sunl
 Superseded: 02 untrimmed mux fe93a1b0-9dc6-4e4c-8cb5-8450c723d864 (8s frozen tail).
 Voice auditions (not used): Arthur 99c18f23…, b5253d40…; Isla 88b6ab39…, 4a089d9d…;
 Knox 12da5e35…, df2e23d0…, 792d862d…, 1ef51fe4….
+
+## Narrator corrected to Arthur — final cold-open clips (supersede the Dylan mixes above)
+
+| Scene | Arthur VO job | Video source | Final (media_id) | Len |
+|-------|---------------|--------------|------------------|-----|
+| 01 wasp | 0e849746-c839-446a-afd4-74ffb70c953f | 89fbfd9e… (silent, 1.3× slow) | 75732d5b-c78c-45c6-9aa8-78aae3386038 | 8.0s |
+| 02 finch | 3f5ce6cf-88c9-4622-8309-e4315e1be1a3 | cec11962… (silent, 1.18× slow) | ec1e8445-4ded-4a84-b083-22be69955959 | 14.2s |
+| 03 otter | 000cc7cf-ffa4-45a8-9de8-9e3d009fa0e0 | 764037cb-06a6-4620-acab-c3bcf81fc135 (Kling 14s, **sound on**, 28 cr) | d249157e-62e2-4cf9-9add-3df0c26ea579 | 14.9s |
+
+Scene 03 mix: Kling ambience at 0.22 gain under VO, limiter. Unused Dylan VO for scene 3: f236d0a3….
+David voice (Bram) test line: 22209b15-5eb2-4c2d-b7f8-9c2f7d062a75.
+Balance after this: 178.25 credits.

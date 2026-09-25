@@ -42,11 +42,12 @@ on left leg) [ACTION/EXPRESSION]. [CAMERA], [LIGHT], family adventure film look,
 - Blocked jobs are not charged; reword and retry once rather than repeatedly.
 
 ## Narrator
-**Dylan** — `seed_audio`, voice_type `preset`, voice_id `b847bc29-f184-583a-8ad9-d1f1e16d1a60`, `speech_rate 15`.
+**Arthur** — `seed_audio`, voice_type `preset`, voice_id `30fc8796-ceb6-4a66-b3a7-4a145ef7f346`, `speech_rate 15`.
+(Dylan `b847bc29-…` was used by mistake on the first mixes of scenes 1–2; replaced.)
 Write pauses as commas, not "…" (ellipses produce 2–3s gaps). After generating, cap silences at
 0.45s (ffmpeg `silenceremove`, −45 dB) and loudness-normalise to −16 LUFS before muxing.
 Fit rule: stretch video up to 1.3×, then hold the last frame; lead-in 0.3s, tail 0.3s.
-Auditioned and not chosen: Arthur, Isla, Knox.
+Auditioned and not chosen: Dylan, Isla, Knox.
 
 ## David's voice
 **Bram** — `seed_audio`, voice_type `preset`, voice_id `549ff70a-3ee7-4f04-a4d9-89a24fab7709`, `speech_rate 10`.

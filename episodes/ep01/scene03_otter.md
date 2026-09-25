@@ -3,7 +3,7 @@
 **Script ref:** `script.md` §1 shot 03 · facts: `research_notes.md` §A (sea otter, Edna Fisher)
 **Length:** 14s · **Still:** `6bb9cdf8-59ee-4940-8115-d866a9720b88` · **Video:** `764037cb-06a6-4620-acab-c3bcf81fc135` (Kling, sound ON)
 **Cast:** David (pointing, amazed) · Caw (on David's shoulder)
-**Narrator:** Dylan — VO job `f236d0a3-8bc2-4764-b905-7ad958cac649` (13.6s)
+**Narrator:** Arthur (`30fc8796-ceb6-4a66-b3a7-4a145ef7f346`, seed_audio, speech_rate 15)
 
 ## Narration — script VO, verbatim
 
