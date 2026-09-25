@@ -47,3 +47,9 @@ Write pauses as commas, not "…" (ellipses produce 2–3s gaps). After generati
 0.45s (ffmpeg `silenceremove`, −45 dB) and loudness-normalise to −16 LUFS before muxing.
 Fit rule: stretch video up to 1.3×, then hold the last frame; lead-in 0.3s, tail 0.3s.
 Auditioned and not chosen: Arthur, Isla, Knox.
+
+## David's voice
+**Bram** — `seed_audio`, voice_type `preset`, voice_id `549ff70a-3ee7-4f04-a4d9-89a24fab7709`, `speech_rate 10`.
+Chosen by the user. No preset voices are tagged as children; if Bram ever reads too old,
+raise `pitch_rate` (+2 to +3) rather than switching voice.
+Also auditioned for David: Benji +3 pitch (69891cff…), Cody +3 pitch (f748c546…).
