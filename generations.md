@@ -93,3 +93,16 @@ Knox 12da5e35…, df2e23d0…, 792d862d…, 1ef51fe4….
 Scene 03 mix: Kling ambience at 0.22 gain under VO, limiter. Unused Dylan VO for scene 3: f236d0a3….
 David voice (Bram) test line: 22209b15-5eb2-4c2d-b7f8-9c2f7d062a75.
 Balance after this: 178.25 credits.
+
+## Google Veo re-render of the cold open (raw clips, native ambience, no VO)
+
+Veo 3.1 (full) is **blocked on Starter** ("Requires plus plan or higher") — used **Veo 3.1 Lite** instead
+(`veo3_1_lite`, 8s, 720p, generate_audio on, 12 credits each). Prompts ask for ambience only, no speech/music.
+
+| Scene | Source still | Veo job | Notes |
+|-------|--------------|---------|-------|
+| 01 wasp | 593ad260… | 4e250729-022d-4613-b3b4-bc74f0ac0424 | 8.0s, audio ~−30 dB mean |
+| 02 finch | ce354ebf… | daf0f45c-ca83-4787-bfb3-cff35a36d548 | 8.0s (first submit hit 429, resubmitted) |
+| 03 otter | 6bb9cdf8… | c35b0126-bcc8-43fc-ba34-234af2d87215 | 8.0s |
+
+Balance after: 142.25 credits. Not yet mixed with narration.
