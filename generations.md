@@ -24,3 +24,17 @@ Photoreal hero stills above were rejected as too realistic.
 | 6 | Grandmother teaches kid + Spark + crow | 2D storybook | aa3882fb-45f4-4f78-ba38-5d2d11d2e37c |
 | 7 | No-character: finch as the star | 2D storybook | 110f7991-bdcb-4497-90d3-3bf27f5b1986 |
 | 8 | Kid + crow on shoulder, savanna, baboons | 3D film | b5bc266a-3d6c-4738-93b7-9d07b876dedf |
+
+## Character reference sheets — 3D style chosen; cast = kid + Caw
+
+`gpt_image_2_5`, high quality, 2k, 16:9 (~2.75 credits each). Blocked jobs are not charged.
+
+| Sheet | Job ID | Status |
+|-------|--------|--------|
+| Caw the crow — turnaround (ref: #3) | 93f98097-20ac-4e5a-bf5e-4b8d41d7e6ac | done, awaiting approval |
+| Kid (girl) turnaround, ref #1 | cc6a6ec0-f0fa-4656-b34a-a9b76c3e41e0 / 27bb0a1a-440a-4e4e-9c49-a519b6c92038 | blocked by content filter ×2 |
+| Kid (boy) turnaround, ref #8 | c4a57932-63e2-41d6-997a-594c40315175 / 6912f9dc-5df0-4c7b-9dd1-353d3833a899 | blocked by content filter ×2 |
+
+Caw design lock: glossy blue-black feathers with purple-blue sheen, oversized dark-grey beak,
+large amber eyes with feather-tuft brows, one scruffy feather on top of the head, thin red
+wool band on the left leg (matches the kid's red scarf).
