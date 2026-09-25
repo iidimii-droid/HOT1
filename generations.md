@@ -49,3 +49,14 @@ wool band on the left leg (matches the kid's red scarf).
 Boy design lock: ~13, lanky, big curious eyes, expressive brows, lopsided grin, tousled
 dark-brown hair up at the crown; long-sleeved tan deer-hide knee tunic, brown hide leggings,
 wrapped hide boots, braided fibre belt + leather hip pouch, **red woven wool scarf** (signature).
+
+**Picked: B → David. Caw approved.** Canon lives in `characters.md`.
+
+## Ep 01 cold open with cast — consistency test (medium, 2k, 1 credit each)
+
+| Beat | Job ID | Status |
+|------|--------|--------|
+| Wasp + pebble, David & Caw at sand level | 593ad260-7b3d-4571-bb0c-e784bd82534e | done |
+| Finch + cactus spine, Caw unimpressed | 15634da9-a8a5-4ad0-ab93-d67326150e56 | done |
+| Otter + anvil stone, Caw on David's shoulder | 648dedb5-02af-4abd-b809-7148f9f6b235 | blocked (pose wording) |
+| Otter — retry, David standing & pointing | 6bb9cdf8-59ee-4940-8115-d866a9720b88 | done |
