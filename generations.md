@@ -69,4 +69,4 @@ wrapped hide boots, braided fibre belt + leather hip pouch, **red woven wool sca
 
 Declined Higgsfield's auto-suggested "IN THE DARK" preset (wrong mood for a sunlit scene).
 | 02 finch (master-prompt still) | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `gpt_image_2_5` medium 2k | — | 1 | done |
-| 02 finch video | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `kling3_0` std, 12s, sound off | cec11962-9679-4a16-866f-4fb9a8fde7e7 | 18 | rendering |
+| 02 finch video | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `kling3_0` std, 12s, sound off | cec11962-9679-4a16-866f-4fb9a8fde7e7 | 18 | done, awaiting review |
