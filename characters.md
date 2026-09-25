@@ -40,3 +40,10 @@ on left leg) [ACTION/EXPRESSION]. [CAMERA], [LIGHT], family adventure film look,
 - Avoid body/skin/pose wording on David ("slim body", "bare arms", "skin", "sits with knees up").
   Describe outfit and actions (standing, pointing, crouching to look) instead.
 - Blocked jobs are not charged; reword and retry once rather than repeatedly.
+
+## Narrator
+**Dylan** — `seed_audio`, voice_type `preset`, voice_id `b847bc29-f184-583a-8ad9-d1f1e16d1a60`, `speech_rate 15`.
+Write pauses as commas, not "…" (ellipses produce 2–3s gaps). After generating, cap silences at
+0.45s (ffmpeg `silenceremove`, −45 dB) and loudness-normalise to −16 LUFS before muxing.
+Fit rule: stretch video up to 1.3×, then hold the last frame; lead-in 0.3s, tail 0.3s.
+Auditioned and not chosen: Arthur, Isla, Knox.

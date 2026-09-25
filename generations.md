@@ -70,3 +70,14 @@ wrapped hide boots, braided fibre belt + leather hip pouch, **red woven wool sca
 Declined Higgsfield's auto-suggested "IN THE DARK" preset (wrong mood for a sunlit scene).
 | 02 finch (master-prompt still) | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `gpt_image_2_5` medium 2k | — | 1 | done |
 | 02 finch video | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `kling3_0` std, 12s, sound off | cec11962-9679-4a16-866f-4fb9a8fde7e7 | 18 | done, awaiting review |
+
+## Narration (Dylan) + final muxed clips
+
+| Scene | VO job | VO len (raw→trimmed) | Final video (media_id) | Len |
+|-------|--------|----------------------|------------------------|-----|
+| 01 wasp | 2ed6e8bd-bbaf-4a5e-9270-96eccc1cf79b | 7.5s | b2eda6b6-edf3-4e2e-96b1-bb39580b273d | 8.1s (video 1.3× slow) |
+| 02 finch | 765871ec-aca4-45dc-8005-a1b7f9039d5e | 22.8s → 12.0s | 06601bcc-352d-4359-aed1-322bbc3579a1 | 12.6s |
+
+Superseded: 02 untrimmed mux fe93a1b0-9dc6-4e4c-8cb5-8450c723d864 (8s frozen tail).
+Voice auditions (not used): Arthur 99c18f23…, b5253d40…; Isla 88b6ab39…, 4a089d9d…;
+Knox 12da5e35…, df2e23d0…, 792d862d…, 1ef51fe4….
