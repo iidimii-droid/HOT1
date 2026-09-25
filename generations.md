@@ -106,3 +106,19 @@ Veo 3.1 (full) is **blocked on Starter** ("Requires plus plan or higher") — us
 | 03 otter | 6bb9cdf8… | c35b0126-bcc8-43fc-ba34-234af2d87215 | 8.0s |
 
 Balance after: 142.25 credits. Not yet mixed with narration.
+
+## Ep 01 cold open — stitched (Veo 3.1 Lite + Arthur), v1
+
+Final: media_id **854db419-c225-40b4-88a7-7ef96d9b7969** · 24.7s · 1280×720 · −16 LUFS-ish
+- Clips: 4e250729 (wasp) → daf0f45c (finch) → c35b0126 (otter, slowed 1.24× with ambience time-stretched)
+- Transitions: 0.6s cross-dissolve (xfade fade) + ambience crossfade; 0.5s fade in from black, 0.8s fade out
+- Veo ambience at 0.45 gain, sidechain-ducked under narration
+- Narration (Arthur, speech_rate 10), tightened to fit 8s scenes:
+  1. "A wasp buries her nest, then pats it flat, with a pebble. She's using a tool." — 8dbd5a33-92a8-453a-ae04-fc061af97637
+  2. "A finch pokes a cactus spine into the bark, and pulls out lunch. She's using a tool." — a98661eb-059b-4e71-aa38-208e455ae44d
+  3. "An otter cracks a shell, on a stone. She's using a tool too. So if using tools makes us human, we have a problem." — 157ed5c6-2216-4b1d-bad4-3e2796b03e9e
+- Verified by Whisper transcript: full final line lands at 22.8s.
+
+Gotchas found: seed_audio can emit ~4.7s of low-level noise before speech (trim by transcript, not silence
+detection); in-graph `loudnorm` after `adelay` truncated the VO — normalise each line to a file first,
+then place with adelay/amix.
