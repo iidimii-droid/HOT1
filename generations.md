@@ -68,3 +68,5 @@ wrapped hide boots, braided fibre belt + leather hip pouch, **red woven wool sca
 | 01 wasp (David & Caw) | 593ad260-7b3d-4571-bb0c-e784bd82534e | `kling3_0` std, 6s, sound off | 89fbfd9e-410b-4406-a57d-50255e163ff7 | 9 | done, awaiting review |
 
 Declined Higgsfield's auto-suggested "IN THE DARK" preset (wrong mood for a sunlit scene).
+| 02 finch (master-prompt still) | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `gpt_image_2_5` medium 2k | — | 1 | done |
+| 02 finch video | ce354ebf-25ec-472f-85d8-63d7f574f2e4 | `kling3_0` std, 12s, sound off | cec11962-9679-4a16-866f-4fb9a8fde7e7 | 18 | rendering |
