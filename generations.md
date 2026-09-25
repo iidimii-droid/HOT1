@@ -60,3 +60,11 @@ wrapped hide boots, braided fibre belt + leather hip pouch, **red woven wool sca
 | Finch + cactus spine, Caw unimpressed | 15634da9-a8a5-4ad0-ab93-d67326150e56 | done |
 | Otter + anvil stone, Caw on David's shoulder | 648dedb5-02af-4abd-b809-7148f9f6b235 | blocked (pose wording) |
 | Otter — retry, David standing & pointing | 6bb9cdf8-59ee-4940-8115-d866a9720b88 | done |
+
+## Ep 01 video
+
+| Shot | Source still | Model | Job ID | Credits | Status |
+|------|--------------|-------|--------|---------|--------|
+| 01 wasp (David & Caw) | 593ad260-7b3d-4571-bb0c-e784bd82534e | `kling3_0` std, 6s, sound off | 89fbfd9e-410b-4406-a57d-50255e163ff7 | 9 | done, awaiting review |
+
+Declined Higgsfield's auto-suggested "IN THE DARK" preset (wrong mood for a sunlit scene).
