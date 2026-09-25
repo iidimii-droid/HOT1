@@ -1,0 +1,17 @@
+{
+  "title": "The Tool-Making Animal",
+  "ar": "9:16",
+  "scenes": [
+    { "kicker": true, "dur": 3.0, "lines": ["Episode 01", "The Tool-Making Animal"] },
+    { "dur": 3.4, "lines": ["A sea otter cracks a shell", "against a stone."] },
+    { "dur": 3.2, "lines": ["A crow bends a wire", "into a hook."] },
+    { "dur": 3.6, "lines": ["Using tools is not", "what makes us different."] },
+    { "dur": 4.0, "lines": ["Imagining a tool", "that does not exist yet —", "then making it."] },
+    { "dur": 3.8, "lines": ["That is the line", "nothing else crossed."] },
+    { "dur": 4.2, "lines": ["Two million years ago", "a hand struck stone", "to a deliberate edge."] },
+    { "dur": 3.6, "lines": ["Not found. Not lucky.", "Intended."] },
+    { "dur": 4.0, "lines": ["And then the stranger step:", "a tool", "made to make another tool."] },
+    { "dur": 3.4, "lines": ["Everything after this", "is the same idea,", "repeated."] },
+    { "kicker": true, "dur": 3.0, "lines": ["A History of Technology", "Episode 01"] }
+  ]
+}
