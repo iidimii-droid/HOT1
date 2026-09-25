@@ -38,3 +38,14 @@ Photoreal hero stills above were rejected as too realistic.
 Caw design lock: glossy blue-black feathers with purple-blue sheen, oversized dark-grey beak,
 large amber eyes with feather-tuft brows, one scruffy feather on top of the head, thin red
 wool band on the left leg (matches the kid's red scarf).
+
+### Lead changed to a ~13-year-old boy (passes the filter)
+
+| Sheet | Job ID | Status |
+|-------|--------|--------|
+| Teen boy turnaround **A** (ref: #8) | 300f45a8-1060-4b9b-be63-a7c73ee2e92d | done, awaiting pick |
+| Teen boy turnaround **B** (no ref) | af70f6f0-691e-40f3-8191-19c379e90422 | done, awaiting pick |
+
+Boy design lock: ~13, lanky, big curious eyes, expressive brows, lopsided grin, tousled
+dark-brown hair up at the crown; long-sleeved tan deer-hide knee tunic, brown hide leggings,
+wrapped hide boots, braided fibre belt + leather hip pouch, **red woven wool scarf** (signature).
