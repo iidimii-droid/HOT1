@@ -1,0 +1,13 @@
+{
+  "name": "ironfall",
+  "version": "0.1.0",
+  "description": "Squad-based multiplayer RTS: armored space marines fighting over capture points (Company of Heroes style).",
+  "private": true,
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node test/sim-test.js && node test/net-test.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}

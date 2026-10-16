@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ironfall</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="menu" class="screen">
+  <div class="menu-box">
+    <h1>IRONFALL</h1>
+    <p class="tag">Squad tactics in armored war. Take the ground. Hold the line.</p>
+    <label>Commander name <input id="name" maxlength="16" placeholder="Commander"></label>
+    <button id="btn-ai" class="primary">Play vs AI</button>
+    <button id="btn-create">Create online match</button>
+    <div class="join-row">
+      <input id="code" maxlength="4" placeholder="CODE">
+      <button id="btn-join">Join</button>
+    </div>
+    <p id="menu-err" class="err"></p>
+    <details class="howto">
+      <summary>How to play</summary>
+      <ul>
+        <li><b>Win</b> by holding more of the 3 <b>victory points</b> (stars) than the enemy. Their tickets drain until 0.</li>
+        <li><b>Left-click / drag</b> to select squads. <b>Right-click</b> to move, or right-click an enemy to attack.</li>
+        <li><b>A</b> then click: attack-move. <b>S</b> stop. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
+        <li><b>G</b> then click: squad ability (frag grenade, jump pack).</li>
+        <li>Capture <b>R</b> (requisition) and <b>P</b> (power) points to fund your army. Build with <b>Z X C V B</b>.</li>
+        <li>Stay near <b>sandbags, walls and ruins</b> (green shield) or in <b>craters</b> (yellow) for cover.</li>
+        <li>Heavy Support teams <b>suppress</b> and <b>pin</b> infantry. Use Lance teams against tanks.</li>
+        <li>Camera: arrow keys, screen edges, middle-drag, mouse wheel to zoom. <b>Ctrl+1–9</b> sets groups.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+
+<div id="lobby" class="screen hidden">
+  <div class="menu-box">
+    <h2>Waiting for opponent</h2>
+    <p>Share this code:</p>
+    <div id="lobby-code" class="big-code">----</div>
+    <p>or this link:</p>
+    <input id="lobby-link" readonly>
+    <button id="btn-copy">Copy link</button>
+  </div>
+</div>
+
+<div id="game" class="hidden">
+  <canvas id="view"></canvas>
+  <div id="topbar">
+    <div class="res"><span class="ico req">R</span><span id="r-req">0</span><small id="r-reqi"></small></div>
+    <div class="res"><span class="ico pow">P</span><span id="r-pow">0</span><small id="r-powi"></small></div>
+    <div class="res"><span class="ico pop">◆</span><span id="r-pop">0</span></div>
+    <div class="tickets">
+      <div class="tk-side"><span id="tk-name1"></span><div class="bar"><div id="tk1" class="fill p1"></div></div><b id="tk1n"></b></div>
+      <div id="vp-row"></div>
+      <div class="tk-side right"><b id="tk2n"></b><div class="bar"><div id="tk2" class="fill p2"></div></div><span id="tk-name2"></span></div>
+    </div>
+    <div id="clock">0:00</div>
+    <button id="btn-sound" title="Toggle sound (M)">♪</button>
+  </div>
+  <div id="cards"></div>
+  <div id="toasts"></div>
+  <div id="bottom">
+    <canvas id="minimap" width="240" height="150"></canvas>
+    <div id="selpanel"></div>
+    <div id="prod">
+      <div id="prod-btns"></div>
+      <div id="queue"></div>
+    </div>
+  </div>
+  <div id="endscreen" class="hidden"><div class="menu-box"><h1 id="end-title"></h1><p id="end-sub"></p><button id="btn-again" class="primary">Back to menu</button></div></div>
+</div>
+<script src="client.js"></script>
+</body>
+</html>
