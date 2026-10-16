@@ -34,6 +34,7 @@ ${modules}
         const msg = JSON.parse(raw);
         if (msg.t === 'ai' && !game) {
           game = new Game();
+          window.__ironfallGame = game; // handle for automated tests
           const ai = new AI(game, 2);
           const name = String(msg.name || '').replace(/[^\\w \\-]/g, '').trim().slice(0, 16) || 'Commander';
           post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], schemes: resolveSchemes(msg.scheme, 'crimson'), ai: true, map: MAP, units: UNITS, weapons: WEAPONS,
@@ -56,9 +57,13 @@ ${modules}
 })();`;
 
 const html = read('public/index.html');
-const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="img/assets.js">'));
+const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="vendor/three.min.js">'));
 const assetsPath = path.join(root, 'public', 'img', 'assets.js');
 const assets = fs.existsSync(assetsPath) ? fs.readFileSync(assetsPath, 'utf8') : '';
+const modelsPath = path.join(root, 'public', 'img', 'models.js');
+const models = fs.existsSync(modelsPath) ? fs.readFileSync(modelsPath, 'utf8') : '';
+// The published page loads Three.js from a CDN instead of inlining it.
+const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0';
 const out = `<title>Ironfall</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap">
 <style>
@@ -68,14 +73,20 @@ ${body.trim()}
 <script>
 ${runtime}
 </script>
+<script src="${THREE_CDN}/build/three.min.js"></script>
+<script src="${THREE_CDN}/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 ${assets}
+${models}
 </script>
 <script>
 ${read('public/art.js')}
 </script>
 <script>
 ${read('public/client.js')}
+</script>
+<script>
+${read('public/render3d.js')}
 </script>
 `;
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });

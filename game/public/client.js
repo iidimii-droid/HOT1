@@ -146,6 +146,8 @@ function beginMatch(m) {
   G.cam.x = hq.x - canvas.width / 2 / G.cam.z + (G.you === 1 ? 300 : -300);
   G.cam.y = hq.y - canvas.height / 2 / G.cam.z;
   G.terrain = ART.battlefield(G.map);
+  G.r3d = false; G.r3dReady = false;
+  setView(use3d);
   $('tk-name1').textContent = m.names[1];
   $('tk-name2').textContent = m.names[2];
   buildProdButtons();
@@ -186,6 +188,7 @@ function endGame(title, sub) {
 
 // ------------------------------------------------------------- Terrain ---
 function addCorpse(m) {
+  if (G.r3d) R3D.markTerrain();
   const t = G.terrain.getContext('2d');
   const col = COLORS[m.o];
   if (m.armor) {
@@ -198,6 +201,7 @@ function addCorpse(m) {
 }
 
 function scorch(x, y, r) {
+  if (G.r3d) R3D.markTerrain();
   const t = G.terrain.getContext('2d');
   const g = t.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, 'rgba(10,8,5,0.45)'); g.addColorStop(1, 'rgba(10,8,5,0)');
@@ -215,6 +219,7 @@ function addShot(sh) {
     G.effects.push({ type: 'smoke', x: x1, y: y1, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 10, r: kind === 4 ? 14 : 7, t: 0, life: 0.9 });
   }
   sfx(['rifle', 'pistol', 'repeater', 'lance', 'cannon', 'repeater', 'rifle', 'blade'][kind], x1, y1);
+  if (G.r3d) R3D.kickRecoil(x1, y1);
 }
 
 function addBoom(b) {
@@ -351,7 +356,7 @@ function frame(now) {
   view = viewState();
   if (view) {
     computeSight(view.squads);
-    draw(view, dt);
+    if (G.r3d) R3D.render(view, dt); else draw(view, dt);
     drawMinimap(view);
     updateHud(view);
   }
@@ -685,7 +690,12 @@ function drawMinimap(v) {
     mctx.fillRect(s.cx * sx - 2, s.cy * sy - 2, s.def.armor ? 5 : 4, s.def.armor ? 5 : 4);
   }
   mctx.strokeStyle = '#fff'; mctx.lineWidth = 1;
-  mctx.strokeRect(G.cam.x * sx, G.cam.y * sy, canvas.width / G.cam.z * sx, canvas.height / G.cam.z * sy);
+  if (G.r3d) {
+    // The 3D view covers a trapezoid of ground.
+    mctx.beginPath();
+    for (const [px, py] of [[0, 0], [canvas.width, 0], [canvas.width, canvas.height], [0, canvas.height]]) { const w = screenToWorld(px, py); mctx.lineTo(w.x * sx, w.y * sy); }
+    mctx.closePath(); mctx.stroke();
+  } else mctx.strokeRect(G.cam.x * sx, G.cam.y * sy, canvas.width / G.cam.z * sx, canvas.height / G.cam.z * sy);
 }
 
 // ------------------------------------------------------------------- HUD ---
@@ -809,7 +819,31 @@ const mouse = { sx: 0, sy: 0, inside: false };
 let drag = null, hover = null, mid = null, rdrag = null;
 const keys = new Set();
 
-function screenToWorld(sx, sy) { return { x: G.cam.x + sx / G.cam.z, y: G.cam.y + sy / G.cam.z }; }
+function screenToWorld(sx, sy) {
+  if (G.r3d) return R3D.pick(sx, sy);
+  return { x: G.cam.x + sx / G.cam.z, y: G.cam.y + sy / G.cam.z };
+}
+function worldToScreen(x, y) {
+  if (G.r3d) return R3D.project(x, y, 10);
+  return { x: (x - G.cam.x) * G.cam.z, y: (y - G.cam.y) * G.cam.z };
+}
+
+// 2D / 3D view switch (3D needs Three.js, loaded from a CDN).
+let use3d = true;
+try { use3d = localStorage.getItem('ironfall-3d') !== '0'; } catch {}
+function setView(want3d) {
+  const ok = want3d && typeof R3D !== 'undefined' && R3D.available();
+  if (ok && !G.r3dReady) { R3D.init(G.map); G.r3dReady = true; }
+  if (typeof R3D !== 'undefined' && R3D.available()) R3D.setVisible(ok);
+  G.r3d = ok;
+  $('btn-view').textContent = ok ? '3D' : '2D';
+  $('btn-view').title = ok ? 'Switch to the 2D view' : (typeof R3D !== 'undefined' && R3D.available() ? 'Switch to the 3D view' : '3D view needs Three.js, which failed to load');
+}
+$('btn-view').onclick = () => {
+  if (!G) return;
+  use3d = !G.r3d; setView(use3d);
+  try { localStorage.setItem('ironfall-3d', use3d ? '1' : '0'); } catch {}
+};
 
 function pickSquad(wx, wy) {
   if (!view) return null;
@@ -866,11 +900,11 @@ addEventListener('mouseup', e => {
   const add = drag.shift;
   if (!add) { G.sel.clear(); G.hqSel = false; }
   if (drag.box) {
-    const a = screenToWorld(Math.min(drag.sx, e.clientX), Math.min(drag.sy, e.clientY));
-    const b = screenToWorld(Math.max(drag.sx, e.clientX), Math.max(drag.sy, e.clientY));
+    const x1 = Math.min(drag.sx, e.clientX), x2 = Math.max(drag.sx, e.clientX);
+    const y1 = Math.min(drag.sy, e.clientY), y2 = Math.max(drag.sy, e.clientY);
     for (const s of view.squads) {
       if (s.o !== G.you) continue;
-      if (s.ms.some(m => m.x >= a.x && m.x <= b.x && m.y >= a.y && m.y <= b.y)) G.sel.add(s.id);
+      if (s.ms.some(m => { const p = worldToScreen(m.x, m.y); return p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2; })) G.sel.add(s.id);
     }
   } else {
     const w = screenToWorld(e.clientX, e.clientY);
@@ -894,8 +928,14 @@ canvas.addEventListener('wheel', e => {
   if (!G) return;
   e.preventDefault();
   const before = screenToWorld(e.clientX, e.clientY);
+  const cx = G.cam.x + canvas.width / 2 / G.cam.z, cy = G.cam.y + canvas.height / 2 / G.cam.z;
   G.cam.z = Math.max(0.45, Math.min(1.8, G.cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
-  G.cam.x = before.x - e.clientX / G.cam.z; G.cam.y = before.y - e.clientY / G.cam.z;
+  if (G.r3d) {
+    // Zoom toward the cursor: move the view center part of the way to the point under it.
+    const k = e.deltaY < 0 ? 0.15 : -0.1;
+    G.cam.x = cx + (before.x - cx) * k - canvas.width / 2 / G.cam.z;
+    G.cam.y = cy + (before.y - cy) * k - canvas.height / 2 / G.cam.z;
+  } else { G.cam.x = before.x - e.clientX / G.cam.z; G.cam.y = before.y - e.clientY / G.cam.z; }
   clampCam();
 }, { passive: false });
 
@@ -911,8 +951,8 @@ function selectHq() {
 }
 
 function onScreen(x, y) {
-  const a = screenToWorld(0, 0), b = screenToWorld(canvas.width, canvas.height);
-  return x >= a.x && x <= b.x && y >= a.y && y <= b.y;
+  const p = worldToScreen(x, y);
+  return p.x >= 0 && p.x <= canvas.width && p.y >= 0 && p.y <= canvas.height;
 }
 
 function issueOrder(w, amove) {

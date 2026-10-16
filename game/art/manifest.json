@@ -33,5 +33,9 @@
     "keyart": "hf_20261016_050441_a7f5e246-87df-4d44-b0aa-a8b734d7a067.png",
     "tank_storm": "hf_20261016_050845_df843867-9a85-493d-bf4a-276a704a5463.png",
     "hq_storm": "hf_20261016_050844_6d12ce88-88c8-41ab-a665-dc6459871f96.png"
+  },
+  "models": {
+    "tank": "hf_20261016_054024_79556d83-3802-4c91-b7af-6cfdbeca1480.glb",
+    "tank_source_image": "hf_20261016_053941_08dfeb4f-6cbc-4c7d-9c02-e228d3afcaee.png"
   }
 }

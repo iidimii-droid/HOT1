@@ -68,6 +68,7 @@
     </div>
     <div id="clock">0:00</div>
     <button id="btn-sound" title="Toggle sound (M)">♪</button>
+    <button id="btn-view" title="Switch view">3D</button>
     <button id="btn-menu" title="Menu">Menu</button>
   </div>
   <div id="cards"></div>
@@ -83,8 +84,12 @@
   <div id="endscreen" class="hidden"><div class="menu-box"><h1 id="end-title"></h1><p id="end-sub"></p><button id="btn-again2" class="primary">Play again</button><button id="btn-again">Back to menu</button></div></div>
   <div id="pausemenu" class="overlay hidden"><div class="menu-box"><h2>Menu</h2><button id="btn-resume" class="primary">Resume</button><button id="btn-restart">Restart match</button><button id="btn-exit">Exit to main menu</button><p class="note">The match keeps running while this menu is open.</p></div></div>
 </div>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
 <script src="img/assets.js"></script>
+<script src="img/models.js"></script>
 <script src="art.js"></script>
 <script src="client.js"></script>
+<script src="render3d.js"></script>
 </body>
 </html>

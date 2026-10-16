@@ -78,6 +78,8 @@ test/            headless AI-vs-AI matches and an end-to-end WebSocket test
 
 Players pick an armor scheme on the menu (Azure Guard, Crimson Host, Emerald Wardens, Storm Grey). All unit and terrain art is drawn in code in `public/art.js`.
 
+**3D view (test):** `public/render3d.js` draws the same match with Three.js: a tilted camera, sun shadows, 3D ruins, sandbags and fortresses, primitive-built marines in each armor scheme, and the Higgsfield-generated 3D tank (`public/img/models.js`, packed by `tools/pack_models.py`). Switch views with the 2D/3D button in the top bar. Three.js is vendored in `public/vendor/` for the server version; the single-file build loads it from jsdelivr.
+
 `npm run build:offline` writes `dist/ironfall.html`, a single-file vs-AI version that needs no server.
 
 Run `npm test` to play three AI-vs-AI matches headlessly and run a two-client
