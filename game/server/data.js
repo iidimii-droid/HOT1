@@ -88,6 +88,7 @@ function buildMap() {
   const map = {
     w: WORLD.w, h: WORLD.h,
     hq: [null, { x: 170, y: 1000 }, { x: WORLD.w - 170, y: 1000 }],
+    captureRadius: 100,
     buildings: [...left.buildings, ...left.buildings.map(mirrorRect)],
     walls: [...left.walls, ...left.walls.map(mirrorRect)],
     craters: [...left.craters, ...left.craters.map(mirrorCircle)],

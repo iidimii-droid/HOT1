@@ -46,4 +46,21 @@ assert(results.every(r => r.kills[0] + r.kills[1] > 0), 'no combat happened');
   assert(inCover >= 4, `only ${inCover} of ${sq.models.length} models took cover`);
   console.log(`cover: ${inCover}/${sq.models.length} models behind sandbags`);
 }
+// An idle squad that spots an enemy beyond rifle range closes in and every soldier fires.
+{
+  const g = new Game({ seed: 5 });
+  for (const s of [...g.squads.values()]) g.squads.delete(s.id);
+  const a = g.spawnSquad(1, 'tactical'), b = g.spawnSquad(2, 'tactical');
+  const place = (s, x, y) => s.models.forEach((m, i) => { m.x = x; m.y = y + (i - 2) * 24; m.path = []; });
+  place(a, 900, 1500); place(b, 1200, 1500); // 300 apart: in sight (330), out of rifle range (260)
+  a.order = { type: 'idle' }; b.order = { type: 'move', x: 1200, y: 1500 }; b.models.forEach(m => { m.path = []; });
+  const fired = new Set();
+  for (let i = 0; i < 20 * 8; i++) {
+    const before = new Map(a.models.map(m => [m.id, m.cd]));
+    g.step();
+    for (const m of a.models) if (m.cd > (before.get(m.id) ?? 0) + 0.3) fired.add(m.id);
+  }
+  assert(fired.size >= 4, `only ${fired.size} soldiers fired`);
+  console.log(`engage: ${fired.size}/5 soldiers fired after first sight`);
+}
 console.log('sim-test ok');

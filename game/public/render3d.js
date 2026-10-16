@@ -226,7 +226,7 @@ const R3D = (() => {
       const icon = p.type === 'vp' ? new T.Mesh(new T.OctahedronGeometry(10), std('#e0b650', { metalness: 0.8, roughness: 0.3, emissive: '#3a2a00' }))
         : new T.Mesh(new T.BoxGeometry(12, 12, 12), std(p.type === 'req' ? '#d9b45a' : '#6fd0e8', { emissive: p.type === 'req' ? '#2a1e00' : '#003040' }));
       icon.position.y = 22; icon.castShadow = true; g.add(icon);
-      const border = new T.Mesh(new T.RingGeometry(73, 76, 64), new T.MeshBasicMaterial({ color: '#dddddd', transparent: true, opacity: 0.5, depthWrite: false }));
+      const border = new T.Mesh(new T.RingGeometry((map.captureRadius || 75) - 3, map.captureRadius || 75, 64), new T.MeshBasicMaterial({ color: '#dddddd', transparent: true, opacity: 0.5, depthWrite: false }));
       border.rotation.x = -Math.PI / 2; border.position.y = 2; g.add(border);
       const prog = new T.Mesh(new T.RingGeometry(32, 37, 48, 1, 0, 0.001), new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, depthWrite: false, side: T.DoubleSide }));
       prog.rotation.x = -Math.PI / 2; prog.position.y = 9; g.add(prog);

@@ -163,6 +163,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
         <li><b>Rally point:</b> left-click your <b>HQ</b> (or press <b>H</b>), then right-click the map. New units walk there.</li>
         <li><b>A</b> (or <b>Q</b>) then click: attack-move, and every soldier fires at the nearest enemy in range. <b>E</b> stop. <b>Esc</b> cancels the last unit in production. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
         <li><b>G</b> then click: squad ability (frag grenade, jump pack).</li>
+        <li>Squads <b>engage on sight</b>: when any soldier spots an enemy, the whole squad opens fire and closes in (unless it is in cover or is a heavy weapon team).</li>
         <li>Capture <b>R</b> (requisition) and <b>P</b> (power) points to fund your army. Build with <b>Z X C V B</b>.</li>
         <li><b>Cover:</b> order a squad next to <b>sandbags, walls or ruins</b> and the soldiers spread out behind them (green shield). <b>Craters</b> give light cover (yellow).</li>
         <li>Heavy Support teams <b>suppress</b> and <b>pin</b> infantry. Use Lance teams against tanks.</li>
@@ -314,6 +315,7 @@ function buildMap() {
   const map = {
     w: WORLD.w, h: WORLD.h,
     hq: [null, { x: 170, y: 1000 }, { x: WORLD.w - 170, y: 1000 }],
+    captureRadius: 100,
     buildings: [...left.buildings, ...left.buildings.map(mirrorRect)],
     walls: [...left.walls, ...left.walls.map(mirrorRect)],
     craters: [...left.craters, ...left.craters.map(mirrorCircle)],
@@ -544,7 +546,7 @@ const { dist, segRect, circleRectPush, Grid } = require('./geo');
 
 const DT = 1 / TICK_RATE;
 const INF_RADIUS = 10;
-const CAPTURE_RADIUS = 75;
+const CAPTURE_RADIUS = MAP.captureRadius;
 const BASE_RADIUS = 300;
 const VET_XP = [250, 700, 1400];
 const SUPPRESSED = 40, PINNED = 80;
@@ -883,12 +885,24 @@ class Game {
     if (s.jump) { this.updateJump(s); return; }
     if (s.pending) this.updatePending(s, c);
 
+    // First sight of an enemy: idle and attack-moving squads engage as a group.
+    // Squads in cover hold their ground, and heavy weapon teams stay set up.
+    if (!s.retreating && !s.pending && s.target && this.squads.has(s.target.id) && this.canAdvance(s)) {
+      const o0 = s.order;
+      if (o0.type === 'idle' && !this.holdsCover(s)) s.order = { type: 'attack', target: s.target.id, repath: 0, auto: true };
+      else if (o0.type === 'move' && s.amove) s.order = { type: 'attack', target: s.target.id, repath: 0, auto: true, resume: { x: o0.x, y: o0.y } };
+    }
+
     // Order logic.
     const o = s.order;
     if (o.type === 'attack') {
       const t = this.squads.get(o.target);
-      if (!t || !t.models.length) { this.halt(s); }
-      else {
+      // Auto-engagements end when the target dies or slips out of sight.
+      const lost = o.auto && t && !t.models.some(v => s.models.some(m => dist(m.x, m.y, v.x, v.y) <= s.def.sight + 60));
+      if (!t || !t.models.length || lost) {
+        if (o.resume) this.orderMove(s, o.resume.x, o.resume.y, true);
+        else this.halt(s);
+      } else {
         const tc = this.centroid(t);
         const range = s.def.melee ? 18 : this.squadRange(s, t) * 0.85;
         const d = dist(c.x, c.y, tc.x, tc.y);
@@ -1069,22 +1083,26 @@ class Game {
     return best;
   }
 
+  // The nearest enemy squad any soldier in this squad can see.
   findTarget(s) {
-    const c = this.centroid(s);
-    const range = this.squadRange(s, null) + 20;
     const antiTank = this.hasAntiTank(s);
+    const sight = s.def.sight;
     let best = null, bestD = Infinity;
     for (const t of this.squads.values()) {
       if (t.owner === s.owner || !t.models.length) continue;
       // Prefer targets this squad can actually hurt.
       const weight = t.def.armor === antiTank ? 1 : 2.5;
-      for (const m of t.models) {
-        const d = dist(c.x, c.y, m.x, m.y);
-        if (d * weight < bestD && d <= Math.min(range, s.def.sight) && this.lineOfSight(c.x, c.y, m.x, m.y)) { best = t; bestD = d * weight; }
+      for (const v of t.models) for (const m of s.models) {
+        const d = dist(m.x, m.y, v.x, v.y);
+        if (d <= sight && d * weight < bestD && this.lineOfSight(m.x, m.y, v.x, v.y)) { best = t; bestD = d * weight; }
       }
     }
     return best;
   }
+
+  // Squads that can leave their spot to close in on a target they've spotted.
+  canAdvance(s) { return !s.def.weapons.some(n => WEAPONS[n].setup); }
+  holdsCover(s) { return s.models.filter(m => m.cover).length * 2 >= s.models.length; }
 
   hasAntiTank(s) { return s.def.weapons.some(n => WEAPONS[n].pen >= 0.5); }
 
@@ -1095,7 +1113,7 @@ class Game {
     s.autoT -= DT;
     if (ord) s.target = ord;
     else if (s.autoT <= 0 || (s.target && !this.squads.has(s.target.id))) {
-      s.autoT = 0.5;
+      s.autoT = 0.3;
       s.target = this.findTarget(s);
     }
     const t = s.target;
@@ -2508,7 +2526,7 @@ function drawPoints(snap) {
     ctx.lineWidth = 2;
     ctx.setLineDash([10, 8]);
     ctx.strokeStyle = owner ? col : 'rgba(220,220,200,0.5)';
-    ctx.beginPath(); ctx.arc(p.x, p.y, 75, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, G.map.captureRadius || 75, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     // Capture progress ring.
     if (Math.abs(val) > 0.001) {
@@ -3395,7 +3413,7 @@ const R3D = (() => {
       const icon = p.type === 'vp' ? new T.Mesh(new T.OctahedronGeometry(10), std('#e0b650', { metalness: 0.8, roughness: 0.3, emissive: '#3a2a00' }))
         : new T.Mesh(new T.BoxGeometry(12, 12, 12), std(p.type === 'req' ? '#d9b45a' : '#6fd0e8', { emissive: p.type === 'req' ? '#2a1e00' : '#003040' }));
       icon.position.y = 22; icon.castShadow = true; g.add(icon);
-      const border = new T.Mesh(new T.RingGeometry(73, 76, 64), new T.MeshBasicMaterial({ color: '#dddddd', transparent: true, opacity: 0.5, depthWrite: false }));
+      const border = new T.Mesh(new T.RingGeometry((map.captureRadius || 75) - 3, map.captureRadius || 75, 64), new T.MeshBasicMaterial({ color: '#dddddd', transparent: true, opacity: 0.5, depthWrite: false }));
       border.rotation.x = -Math.PI / 2; border.position.y = 2; g.add(border);
       const prog = new T.Mesh(new T.RingGeometry(32, 37, 48, 1, 0, 0.001), new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, depthWrite: false, side: T.DoubleSide }));
       prog.rotation.x = -Math.PI / 2; prog.position.y = 9; g.add(prog);

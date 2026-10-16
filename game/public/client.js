@@ -410,7 +410,7 @@ function drawPoints(snap) {
     ctx.lineWidth = 2;
     ctx.setLineDash([10, 8]);
     ctx.strokeStyle = owner ? col : 'rgba(220,220,200,0.5)';
-    ctx.beginPath(); ctx.arc(p.x, p.y, 75, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, G.map.captureRadius || 75, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     // Capture progress ring.
     if (Math.abs(val) > 0.001) {

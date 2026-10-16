@@ -6,7 +6,7 @@ const { dist, segRect, circleRectPush, Grid } = require('./geo');
 
 const DT = 1 / TICK_RATE;
 const INF_RADIUS = 10;
-const CAPTURE_RADIUS = 75;
+const CAPTURE_RADIUS = MAP.captureRadius;
 const BASE_RADIUS = 300;
 const VET_XP = [250, 700, 1400];
 const SUPPRESSED = 40, PINNED = 80;
@@ -345,12 +345,24 @@ class Game {
     if (s.jump) { this.updateJump(s); return; }
     if (s.pending) this.updatePending(s, c);
 
+    // First sight of an enemy: idle and attack-moving squads engage as a group.
+    // Squads in cover hold their ground, and heavy weapon teams stay set up.
+    if (!s.retreating && !s.pending && s.target && this.squads.has(s.target.id) && this.canAdvance(s)) {
+      const o0 = s.order;
+      if (o0.type === 'idle' && !this.holdsCover(s)) s.order = { type: 'attack', target: s.target.id, repath: 0, auto: true };
+      else if (o0.type === 'move' && s.amove) s.order = { type: 'attack', target: s.target.id, repath: 0, auto: true, resume: { x: o0.x, y: o0.y } };
+    }
+
     // Order logic.
     const o = s.order;
     if (o.type === 'attack') {
       const t = this.squads.get(o.target);
-      if (!t || !t.models.length) { this.halt(s); }
-      else {
+      // Auto-engagements end when the target dies or slips out of sight.
+      const lost = o.auto && t && !t.models.some(v => s.models.some(m => dist(m.x, m.y, v.x, v.y) <= s.def.sight + 60));
+      if (!t || !t.models.length || lost) {
+        if (o.resume) this.orderMove(s, o.resume.x, o.resume.y, true);
+        else this.halt(s);
+      } else {
         const tc = this.centroid(t);
         const range = s.def.melee ? 18 : this.squadRange(s, t) * 0.85;
         const d = dist(c.x, c.y, tc.x, tc.y);
@@ -531,22 +543,26 @@ class Game {
     return best;
   }
 
+  // The nearest enemy squad any soldier in this squad can see.
   findTarget(s) {
-    const c = this.centroid(s);
-    const range = this.squadRange(s, null) + 20;
     const antiTank = this.hasAntiTank(s);
+    const sight = s.def.sight;
     let best = null, bestD = Infinity;
     for (const t of this.squads.values()) {
       if (t.owner === s.owner || !t.models.length) continue;
       // Prefer targets this squad can actually hurt.
       const weight = t.def.armor === antiTank ? 1 : 2.5;
-      for (const m of t.models) {
-        const d = dist(c.x, c.y, m.x, m.y);
-        if (d * weight < bestD && d <= Math.min(range, s.def.sight) && this.lineOfSight(c.x, c.y, m.x, m.y)) { best = t; bestD = d * weight; }
+      for (const v of t.models) for (const m of s.models) {
+        const d = dist(m.x, m.y, v.x, v.y);
+        if (d <= sight && d * weight < bestD && this.lineOfSight(m.x, m.y, v.x, v.y)) { best = t; bestD = d * weight; }
       }
     }
     return best;
   }
+
+  // Squads that can leave their spot to close in on a target they've spotted.
+  canAdvance(s) { return !s.def.weapons.some(n => WEAPONS[n].setup); }
+  holdsCover(s) { return s.models.filter(m => m.cover).length * 2 >= s.models.length; }
 
   hasAntiTank(s) { return s.def.weapons.some(n => WEAPONS[n].pen >= 0.5); }
 
@@ -557,7 +573,7 @@ class Game {
     s.autoT -= DT;
     if (ord) s.target = ord;
     else if (s.autoT <= 0 || (s.target && !this.squads.has(s.target.id))) {
-      s.autoT = 0.5;
+      s.autoT = 0.3;
       s.target = this.findTarget(s);
     }
     const t = s.target;
