@@ -12,7 +12,7 @@ const { ABILITIES } = require('./sim');
 
 const PORT = process.env.PORT !== undefined ? Number(process.env.PORT) : 8080;
 const PUBLIC = path.join(__dirname, '..', 'public');
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.glb': 'model/gltf-binary' };
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);

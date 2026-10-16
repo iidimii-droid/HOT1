@@ -9,7 +9,7 @@ const R3D = (() => {
   const PITCH = 52 * Math.PI / 180; // camera angle above the ground
   const FOV = 38;
   let renderer = null, scene, camera, sun, glCanvas, ground, groundTex, fogPlane, fogCanvas, fogTex;
-  let terrainDirty = 0, tankProto = null;
+  let terrainDirty = 0;
   const units = new Map();      // model id -> { obj, parts, last }
   const fxPool = [];            // reusable sprites
   const lines = [];             // active tracer meshes
@@ -103,6 +103,7 @@ const R3D = (() => {
     outer.rotation.x = -Math.PI / 2; outer.position.set(map.w / 2, -0.5, map.h / 2); scene.add(outer);
 
     buildCover(map);
+    fortressObjs = [null, null, null];
     for (const p of [1, 2]) buildFortress(map.hq[p], p);
     buildPoints(map);
 
@@ -123,7 +124,8 @@ const R3D = (() => {
     scene.add(tracerMesh);
 
     units.clear(); fxPool.length = 0; ringPool.length = 0; grenadePool.length = 0;
-    loadTank();
+    loadModels();
+    if (protos.hq) for (const p of [1, 2]) placeFortressModel(p);
   }
 
   function setVisible(on) { if (glCanvas) glCanvas.style.display = on ? 'block' : 'none'; }
@@ -217,6 +219,7 @@ const R3D = (() => {
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     g.position.set(h.x, 0, h.y);
     scene.add(g);
+    fortressObjs[p] = g;
   }
 
   function buildPoints(map) {
@@ -244,44 +247,131 @@ const R3D = (() => {
     }
   }
 
-  // ---- Tank model (Higgsfield GLB, optional) -----------------------------------------
-  function loadTank() {
-    const src = window.IRONFALL_MODELS && window.IRONFALL_MODELS.tank;
-    if (!src || !T.GLTFLoader || tankProto) return;
-    // Decode the embedded GLB here and parse it directly: the published page
-    // may block fetch() of data: URLs, which GLTFLoader.load() relies on.
-    let buf;
-    try {
-      const bin = atob(src.slice(src.indexOf(',') + 1));
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      buf = bytes.buffer;
-    } catch (e) { console.warn('Ironfall: could not decode tank model', e); return; }
+  // ---- Generated 3D models (Higgsfield GLBs published next to the page) -----------------
+  // size: world units along `axis`; yaw turns the mesh so it faces +x (our forward).
+  const MODEL_SPECS = {
+    tank:     { file: 'tank',   size: 84,  axis: 'len',    yaw: Math.PI,     metal: 0.5 },
+    hq:       { file: 'hq',     size: 205, axis: 'len',    yaw: 0,           metal: 0.25 },
+    rifle:    { file: 'rifle',  size: 38,  axis: 'height', yaw: Math.PI / 2, metal: 0.35 },
+    repeater: { file: 'heavy',  size: 38,  axis: 'height', yaw: Math.PI / 2, metal: 0.35 },
+    lance:    { file: 'lance',  size: 38,  axis: 'height', yaw: Math.PI / 2, metal: 0.35 },
+    hammer:   { file: 'hammer', size: 38,  axis: 'height', yaw: Math.PI / 2, metal: 0.35 },
+  };
+  const protos = {};
+  let modelsRequested = false;
+
+  function loadModels() {
+    if (modelsRequested || !T.GLTFLoader) return;
+    modelsRequested = true;
+    const base = window.IRONFALL_MODEL_BASE ?? 'models/';
+    for (const [kind, spec] of Object.entries(MODEL_SPECS)) {
+      fetch(base + spec.file + '.glb').then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+        .then(buf => parseModel(kind, spec, buf))
+        .catch(err => console.warn(`Ironfall: ${spec.file} model unavailable, using simple shapes`, err));
+    }
+  }
+
+  function parseModel(kind, spec, buf) {
     // GLTFLoader decodes textures with fetch() + createImageBitmap when it can;
     // hiding createImageBitmap makes it use a plain <img>, which the page allows.
     const cib = window.createImageBitmap;
     try { window.createImageBitmap = undefined; } catch {}
     new T.GLTFLoader().parse(buf, '', gltf => {
       const obj = gltf.scene;
-      const box = new T.Box3().setFromObject(obj), size = box.getSize(new T.Vector3()), c = box.getCenter(new T.Vector3());
-      obj.position.sub(c); obj.position.y += size.y / 2;
-      const wrap = new T.Group(); wrap.add(obj);
-      const s = 84 / Math.max(size.x, size.z);
-      wrap.scale.setScalar(s);
-      wrap.userData.forwardOffset = window.IRONFALL_MODELS.tankYaw || 0;
-      wrap.traverse(o => {
+      obj.updateMatrixWorld(true);
+      // Skinned meshes render in their bind-pose units (the skeleton's own
+      // scale cancels out), so measure their raw geometry; others as placed.
+      const box = new T.Box3();
+      obj.traverse(o => {
+        if (o.isSkinnedMesh) { o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox); }
+        else if (o.isMesh) box.expandByObject(o);
+      });
+      const size = box.getSize(new T.Vector3()), c = box.getCenter(new T.Vector3());
+      obj.position.set(-c.x, -box.min.y, -c.z);
+      const yawG = new T.Group(); yawG.rotation.y = spec.yaw; yawG.add(obj);
+      const root = new T.Group(); root.add(yawG);
+      root.scale.setScalar(spec.size / (spec.axis === 'height' ? size.y : Math.max(size.x, size.z)));
+      let skinned = false;
+      root.traverse(o => {
         if (!o.isMesh) return;
+        if (o.isSkinnedMesh) { skinned = true; o.frustumCulled = false; }
         o.castShadow = true; o.receiveShadow = true;
-        // The generated material is fully matte; give the armor some metallic sheen.
         const m = o.material;
-        m.metalness = 0.5; m.roughness = 0.42; m.envMapIntensity = 0.9;
+        m.metalness = spec.metal; m.roughness = 0.45; m.envMapIntensity = 0.9;
         if (m.map) { m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.needsUpdate = true; }
       });
-      tankProto = wrap;
-      // Swap procedural tanks already on the field.
-      for (const [id, u] of units) if (u.kind === 'tank') { scene.remove(u.obj); units.delete(id); }
-    }, err => console.warn('Ironfall: tank model failed to load', err));
+      protos[kind] = { root, clips: gltf.animations || [], skinned };
+      // Swap stand-ins already on the field.
+      for (const [id, u] of units) if (u.kind === kind && !u.gen) { scene.remove(u.obj); units.delete(id); }
+      if (kind === 'hq') for (const p of [1, 2]) placeFortressModel(p);
+    }, err => console.warn(`Ironfall: ${spec.file} model failed to parse`, err));
     try { window.createImageBitmap = cib; } catch {}
+  }
+
+  // Team colors: shift the blue armor in a texture to another scheme, leaving
+  // gold trim, metal, cloth and glowing lenses alone.
+  const RECOLOR = { crimson: { h: 358, s: 1.05, v: 0.92 }, emerald: { h: 146, s: 0.85, v: 0.78 }, storm: { h: 208, s: 0.2, v: 1.08 } };
+  const recolorCache = new Map();
+  function recolorTex(tex, scheme) {
+    const R = RECOLOR[scheme];
+    if (!R || !tex || !tex.image) return tex;
+    const key = tex.uuid + scheme;
+    if (recolorCache.has(key)) return recolorCache.get(key);
+    const img = tex.image, w = img.width, h = img.height;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const c = cv.getContext('2d'); c.drawImage(img, 0, 0);
+    const d = c.getImageData(0, 0, w, h), px = d.data;
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), dl = mx - mn;
+      if (dl < 0.08 || mx < 0.06) continue;
+      let hue = mx === r ? ((g - b) / dl) % 6 : mx === g ? (b - r) / dl + 2 : (r - g) / dl + 4;
+      hue *= 60; if (hue < 0) hue += 360;
+      if (hue < 190 || hue > 265) continue;
+      const sat = Math.min(1, (dl / mx) * R.s), val = Math.min(1, mx * R.v);
+      const hh = R.h / 60, k = n => (n + hh) % 6;
+      const f = n => val - val * sat * Math.max(0, Math.min(k(n), 4 - k(n), 1));
+      px[i] = f(5) * 255; px[i + 1] = f(3) * 255; px[i + 2] = f(1) * 255;
+    }
+    c.putImageData(d, 0, 0);
+    const out = new T.CanvasTexture(cv);
+    out.flipY = tex.flipY; out.encoding = tex.encoding; if ('colorSpace' in tex) out.colorSpace = tex.colorSpace;
+    out.wrapS = tex.wrapS; out.wrapT = tex.wrapT; out.anisotropy = tex.anisotropy;
+    recolorCache.set(key, out);
+    return out;
+  }
+
+  const matCache = new Map();
+  function instance(kind, scheme) {
+    const P = protos[kind];
+    const obj = P.skinned && T.SkeletonUtils ? T.SkeletonUtils.clone(P.root) : P.root.clone(true);
+    if (RECOLOR[scheme]) obj.traverse(o => {
+      if (!o.isMesh) return;
+      const key = o.material.uuid + scheme;
+      if (!matCache.has(key)) { const m = o.material.clone(); m.map = recolorTex(o.material.map, scheme); matCache.set(key, m); }
+      o.material = matCache.get(key);
+    });
+    const u = { obj: new T.Group(), parts: {}, gen: true };
+    u.obj.add(obj);
+    if (P.clips.length) {
+      u.mixer = new T.AnimationMixer(obj);
+      u.action = u.mixer.clipAction(P.clips[0]);
+      u.action.play();
+      u.mixer.update(Math.random() * P.clips[0].duration);
+    }
+    return u;
+  }
+
+  let fortressObjs = [null, null, null];
+  function placeFortressModel(p) {
+    if (!protos.hq || !scene) return;
+    if (fortressObjs[p]) scene.remove(fortressObjs[p]);
+    const u = instance('hq', G.schemes[p]);
+    const h = G.map.hq[p];
+    u.obj.position.set(h.x, 0, h.y);
+    u.obj.rotation.y = p === 1 ? 0 : Math.PI;
+    scene.add(u.obj);
+    fortressObjs[p] = u.obj;
   }
 
   // ---- Units ---------------------------------------------------------------------------
@@ -342,13 +432,7 @@ const R3D = (() => {
 
   function makeTank(scheme) {
     const M = schemeMats(scheme);
-    if (tankProto) {
-      const obj = tankProto.clone(true);
-      // Tint the shared texture toward the team color for non-azure schemes.
-      if (scheme !== 'azure') obj.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color = new T.Color(ART.SCHEMES[scheme].hi); } });
-      const g = new T.Group(); g.add(obj); obj.rotation.y = tankProto.userData.forwardOffset;
-      return { obj: g, parts: {} };
-    }
+    if (protos.tank) return instance('tank', scheme);
     const g = new T.Group();
     const b = (w, h, d, m, x, y, z) => { const o = new T.Mesh(new T.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
     b(52, 10, 9, M.metal, 0, 6, -15); b(52, 10, 9, M.metal, 0, 6, 15);
@@ -365,7 +449,7 @@ const R3D = (() => {
     if (u && u.kind !== kind) { scene.remove(u.obj); u = null; }
     if (!u) {
       const scheme = G.schemes[s.o];
-      u = s.def.armor ? makeTank(scheme) : makeMarine(scheme, kind);
+      u = s.def.armor ? makeTank(scheme) : protos[kind] ? instance(kind, scheme) : makeMarine(scheme, kind);
       u.kind = kind; u.walk = Math.random() * 6; u.lastX = m.x; u.lastY = m.y;
       scene.add(u.obj);
       units.set(m.id, u);
@@ -499,6 +583,12 @@ const R3D = (() => {
         const lift = m.jz || 0;
         u.obj.position.set(m.x, lift * 46, m.y);
         u.obj.rotation.y = -m.face;
+        if (u.mixer) {
+          // Play the walk cycle while moving; settle into the first frame when stopped.
+          if (moved > 0.05) { u.action.paused = false; u.mixer.update(dt * (s.st === 'retreat' ? 1.5 : 1)); u.still = 0; }
+          else if ((u.still = (u.still || 0) + dt) > 0.25 && !u.settled) { u.action.time = 0; u.mixer.update(0); u.settled = true; }
+          if (moved > 0.05) u.settled = false;
+        }
         if (u.parts.legL) {
           // Simple walk cycle while moving, a slight breathing bob when still.
           u.walk += moved * 0.35;
@@ -684,7 +774,14 @@ const R3D = (() => {
   function markTerrain() { if (!terrainDirty) terrainDirty = performance.now(); }
 
   // Inspection hook for automated tests.
-  function debugUnits() { return [...units.values()].filter(u => u.kind === 'tank').map(u => ({ visible: u.obj.visible, pos: u.obj.position.toArray().map(Math.round), children: u.obj.children.length, proto: !!tankProto })); }
+  function debugModel(kind) {
+    const P = protos[kind]; if (!P) return null;
+    const u = [...units.values()].find(x => x.kind === kind && x.gen);
+    const info = { scale: P.root.scale.x, skinned: P.skinned, clips: P.clips.map(c => c.name) };
+    if (u) { u.obj.updateMatrixWorld(true); const b = new T.Box3().setFromObject(u.obj); info.worldBox = [b.min.toArray().map(Math.round), b.max.toArray().map(Math.round)]; info.pos = u.obj.position.toArray().map(Math.round); }
+    return info;
+  }
+  function debugUnits() { return { protos: Object.keys(protos), units: [...units.values()].map(u => ({ kind: u.kind, gen: !!u.gen, visible: u.obj.visible, pos: u.obj.position.toArray().map(Math.round) })) }; }
 
-  return { available, init, render, pick, project, setVisible, markTerrain, kickRecoil, debugUnits };
+  return { available, init, render, pick, project, setVisible, markTerrain, kickRecoil, debugUnits, debugModel };
 })();

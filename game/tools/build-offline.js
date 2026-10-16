@@ -60,8 +60,6 @@ const html = read('public/index.html');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="vendor/three.min.js">'));
 const assetsPath = path.join(root, 'public', 'img', 'assets.js');
 const assets = fs.existsSync(assetsPath) ? fs.readFileSync(assetsPath, 'utf8') : '';
-const modelsPath = path.join(root, 'public', 'img', 'models.js');
-const models = fs.existsSync(modelsPath) ? fs.readFileSync(modelsPath, 'utf8') : '';
 // The published page loads Three.js from a CDN instead of inlining it.
 const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.147.0';
 const out = `<title>Ironfall</title>
@@ -76,9 +74,9 @@ ${runtime}
 <script src="${THREE_CDN}/build/three.min.js"></script>
 <script src="${THREE_CDN}/examples/js/loaders/GLTFLoader.js"></script>
 <script src="${THREE_CDN}/examples/js/environments/RoomEnvironment.js"></script>
+<script src="${THREE_CDN}/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 ${assets}
-${models}
 </script>
 <script>
 ${read('public/art.js')}
@@ -92,4 +90,10 @@ ${read('public/render3d.js')}
 `;
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'ironfall.html'), out);
+// 3D models are published as separate files next to the page.
+const modelsDir = path.join(root, 'public', 'models');
+if (fs.existsSync(modelsDir)) {
+  fs.mkdirSync(path.join(root, 'dist', 'models'), { recursive: true });
+  for (const f of fs.readdirSync(modelsDir)) fs.copyFileSync(path.join(modelsDir, f), path.join(root, 'dist', 'models', f));
+}
 console.log(`dist/ironfall.html written (${(out.length / 1024).toFixed(0)} KB)`);
