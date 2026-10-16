@@ -7,7 +7,7 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const { Game } = require('./sim');
 const { AI } = require('./ai');
-const { TICK_RATE, UNITS, WEAPONS, ECON, MAP } = require('./data');
+const { TICK_RATE, UNITS, WEAPONS, ECON, MAP, resolveSchemes } = require('./data');
 const { ABILITIES } = require('./sim');
 
 const PORT = process.env.PORT !== undefined ? Number(process.env.PORT) : 8080;
@@ -39,17 +39,18 @@ function makeCode() {
 function send(ws, msg) { if (ws && ws.readyState === 1) ws.send(typeof msg === 'string' ? msg : JSON.stringify(msg)); }
 
 function createRoom(vsAI) {
-  const room = { code: makeCode(), players: [null, null, null], names: ['', '', ''], game: null, ai: null, timer: null, vsAI };
+  const room = { code: makeCode(), players: [null, null, null], names: ['', '', ''], schemes: [null, null, null], game: null, ai: null, timer: null, vsAI };
   rooms.set(room.code, room);
   return room;
 }
 
 function startGame(room) {
   room.game = new Game();
+  const schemes = resolveSchemes(room.schemes[1], room.schemes[2]);
   if (room.vsAI) room.ai = new AI(room.game, 2);
   for (const p of [1, 2]) {
     send(room.players[p], {
-      t: 'start', you: p, names: room.names, map: MAP, units: UNITS, weapons: WEAPONS,
+      t: 'start', you: p, names: room.names, schemes, map: MAP, units: UNITS, weapons: WEAPONS,
       abilities: ABILITIES, econ: ECON, tickRate: TICK_RATE,
     });
   }
@@ -87,7 +88,7 @@ wss.on('connection', ws => {
     if (room) return; // already in a room
     if (msg.t === 'create' || msg.t === 'ai') {
       const r = createRoom(msg.t === 'ai');
-      r.players[1] = ws; r.names[1] = cleanName(msg.name);
+      r.players[1] = ws; r.names[1] = cleanName(msg.name); r.schemes[1] = msg.scheme;
       ws.room = r; ws.slot = 1;
       if (r.vsAI) { r.names[2] = 'Iron AI'; startGame(r); }
       else send(ws, { t: 'lobby', code: r.code });
@@ -95,7 +96,7 @@ wss.on('connection', ws => {
       const r = rooms.get(String(msg.code || '').toUpperCase());
       if (!r || r.vsAI) { send(ws, { t: 'err', msg: 'No game with that code' }); return; }
       if (r.players[2]) { send(ws, { t: 'err', msg: 'That game is full' }); return; }
-      r.players[2] = ws; r.names[2] = cleanName(msg.name);
+      r.players[2] = ws; r.names[2] = cleanName(msg.name); r.schemes[2] = msg.scheme;
       ws.room = r; ws.slot = 2;
       startGame(r);
     }

@@ -102,4 +102,15 @@ function buildMap() {
 
 const MAP = buildMap();
 
-module.exports = { TICK_RATE, WORLD, WEAPONS, UNITS, ECON, MAP };
+// Armor color schemes players can pick on the menu.
+const SCHEMES = ['azure', 'crimson', 'emerald', 'storm'];
+
+// Gives player 2 a different scheme when both picked the same one.
+function resolveSchemes(a, b) {
+  const s1 = SCHEMES.includes(a) ? a : 'azure';
+  let s2 = SCHEMES.includes(b) ? b : 'crimson';
+  if (s2 === s1) s2 = s1 === 'crimson' ? 'azure' : 'crimson';
+  return [null, s1, s2];
+}
+
+module.exports = { SCHEMES, resolveSchemes, TICK_RATE, WORLD, WEAPONS, UNITS, ECON, MAP };

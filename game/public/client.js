@@ -2,10 +2,8 @@
 // Ironfall browser client: menus, rendering, input and HUD.
 
 const $ = id => document.getElementById(id);
-const COLORS = {
-  1: { body: '#3f6fc9', trim: '#d9b45a', dark: '#1c3466', light: '#8fb4ff' },
-  2: { body: '#b8322c', trim: '#e8dcb8', dark: '#5a1512', light: '#ff8f86' },
-};
+// Filled from each player's armor scheme when a match starts.
+const COLORS = { 1: null, 2: null };
 const SHOT_STYLE = [
   { c: '#ffe08a', w: 1.2, life: 0.08 },  // rifle
   { c: '#ffd070', w: 1, life: 0.06 },    // pistol
@@ -14,7 +12,7 @@ const SHOT_STYLE = [
   { c: '#ffb050', w: 2.5, life: 0.12 },  // cannon
   { c: '#ffe08a', w: 1, life: 0.05 },    // coax
   { c: '#ff9a50', w: 2, life: 0.08 },    // bastion
-  { c: '#ffffff', w: 0, life: 0.1 },     // blade
+  { c: '#8fe0ff', w: 2, life: 0.16 },    // power hammer
 ];
 const BUILD_KEYS = { z: 'tactical', x: 'heavy', c: 'assault', v: 'lance', b: 'tank' };
 const BUILD_LIST = ['tactical', 'heavy', 'assault', 'lance', 'tank'];
@@ -48,12 +46,30 @@ function playerName() {
   return n;
 }
 
-$('btn-ai').onclick = () => connect(() => send({ t: 'ai', name: playerName() }));
-$('btn-create').onclick = () => connect(() => send({ t: 'create', name: playerName() }));
+// Armor scheme picker with an animated preview.
+let scheme = 'azure';
+try { if (ART.SCHEMES[localStorage.getItem('ironfall-scheme')]) scheme = localStorage.getItem('ironfall-scheme'); } catch {}
+function renderSchemes() {
+  $('scheme-btns').innerHTML = Object.entries(ART.SCHEMES).map(([k, S]) =>
+    `<button type="button" class="swatch ${k === scheme ? 'on' : ''}" data-k="${k}" title="${S.name}" aria-label="${S.name}" style="--a:${S.armor};--t:${S.trim}"></button>`).join('');
+  $('scheme-name').textContent = ART.SCHEMES[scheme].name;
+}
+$('scheme-btns').addEventListener('click', e => {
+  const b = e.target.closest('.swatch'); if (!b) return;
+  scheme = b.dataset.k; renderSchemes();
+  try { localStorage.setItem('ironfall-scheme', scheme); } catch {}
+});
+renderSchemes();
+(function previewLoop(t) {
+  if (!G) { ART.drawPreview($('scheme-preview'), scheme, t || 0); requestAnimationFrame(previewLoop); }
+})();
+
+$('btn-ai').onclick = () => connect(() => send({ t: 'ai', name: playerName(), scheme }));
+$('btn-create').onclick = () => connect(() => send({ t: 'create', name: playerName(), scheme }));
 $('btn-join').onclick = () => {
   const code = $('code').value.trim().toUpperCase();
   if (code.length !== 4) { $('menu-err').textContent = 'Enter the 4-letter code.'; return; }
-  connect(() => send({ t: 'join', code, name: playerName() }));
+  connect(() => send({ t: 'join', code, name: playerName(), scheme }));
 };
 $('btn-copy').onclick = () => { $('lobby-link').select(); navigator.clipboard?.writeText($('lobby-link').value); };
 $('btn-again').onclick = () => location.href = location.pathname;
@@ -98,13 +114,18 @@ function startMatch(m) {
     you: m.you, map: m.map, units: m.units, abilities: m.abilities, names: m.names, econ: m.econ,
     snaps: [], latest: null, cam: { x: 0, y: 0, z: 1 }, sel: new Set(), groups: {},
     mode: null, effects: [], tracers: [], lastModels: new Map(), over: false, prevCards: '',
-    lastTap: { key: null, t: 0 },
+    lastTap: { key: null, t: 0 }, hqSel: false, schemes: m.schemes || [null, 'azure', 'crimson'],
   };
+  for (const p of [1, 2]) {
+    const S = ART.SCHEMES[G.schemes[p]];
+    COLORS[p] = { body: S.armor, trim: S.trim, dark: S.lo, light: S.hi, ui: S.ui };
+    document.documentElement.style.setProperty(`--p${p}`, S.ui);
+  }
   const hq = G.map.hq[G.you];
   resize();
   G.cam.x = hq.x - canvas.width / 2 / G.cam.z + (G.you === 1 ? 300 : -300);
   G.cam.y = hq.y - canvas.height / 2 / G.cam.z;
-  G.terrain = buildTerrain(G.map);
+  G.terrain = ART.battlefield(G.map);
   $('tk-name1').textContent = m.names[1];
   $('tk-name2').textContent = m.names[2];
   buildProdButtons();
@@ -142,80 +163,6 @@ function endGame(title, sub) {
 }
 
 // ------------------------------------------------------------- Terrain ---
-function rng(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
-
-function buildTerrain(map) {
-  const c = document.createElement('canvas');
-  c.width = map.w; c.height = map.h;
-  const t = c.getContext('2d');
-  const r = rng(1234);
-  t.fillStyle = '#34352a'; t.fillRect(0, 0, map.w, map.h);
-  // Ground variation.
-  for (let i = 0; i < 1400; i++) {
-    const x = r() * map.w, y = r() * map.h, rad = 20 + r() * 120;
-    const g = t.createRadialGradient(x, y, 0, x, y, rad);
-    const tone = r() < 0.5 ? '60,58,42' : r() < 0.5 ? '38,40,30' : '72,66,48';
-    g.addColorStop(0, `rgba(${tone},0.35)`); g.addColorStop(1, `rgba(${tone},0)`);
-    t.fillStyle = g; t.fillRect(x - rad, y - rad, rad * 2, rad * 2);
-  }
-  // Roads.
-  t.strokeStyle = 'rgba(95,88,70,0.55)'; t.lineCap = 'round';
-  t.lineWidth = 46;
-  t.beginPath(); t.moveTo(0, 1000); t.bezierCurveTo(800, 960, 1400, 1060, 1600, 1000); t.bezierCurveTo(1800, 940, 2400, 1040, 3200, 1000); t.stroke();
-  t.lineWidth = 30;
-  for (const y of [350, 1650]) { t.beginPath(); t.moveTo(500, y + (y < 1000 ? 120 : -120)); t.quadraticCurveTo(1600, y - (y < 1000 ? 80 : -80), 2700, y + (y < 1000 ? 120 : -120)); t.stroke(); }
-  t.beginPath(); t.moveTo(1600, 0); t.lineTo(1600, 2000); t.stroke();
-  // Speckle.
-  for (let i = 0; i < 9000; i++) {
-    t.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.25)' : 'rgba(150,140,110,0.18)';
-    t.fillRect(r() * map.w, r() * map.h, 1 + r() * 2, 1 + r() * 2);
-  }
-  // Craters.
-  for (const cr of map.craters) {
-    const g = t.createRadialGradient(cr.x, cr.y, cr.r * 0.1, cr.x, cr.y, cr.r * 1.25);
-    g.addColorStop(0, '#16150f'); g.addColorStop(0.7, '#2a281e'); g.addColorStop(0.82, '#5d5640'); g.addColorStop(1, 'rgba(60,56,42,0)');
-    t.fillStyle = g; t.beginPath(); t.arc(cr.x, cr.y, cr.r * 1.25, 0, Math.PI * 2); t.fill();
-  }
-  // Ruined buildings.
-  for (const b of map.buildings) {
-    t.fillStyle = 'rgba(0,0,0,0.45)'; t.fillRect(b.x + 8, b.y + 10, b.w, b.h);
-    t.fillStyle = '#2b2b2a'; t.fillRect(b.x, b.y, b.w, b.h);
-    for (let i = 0; i < 26; i++) {
-      t.fillStyle = r() < 0.5 ? '#3a3936' : '#232322';
-      t.fillRect(b.x + 6 + r() * (b.w - 24), b.y + 6 + r() * (b.h - 24), 6 + r() * 16, 6 + r() * 16);
-    }
-    t.strokeStyle = '#5a5850'; t.lineWidth = 7; t.strokeRect(b.x + 3.5, b.y + 3.5, b.w - 7, b.h - 7);
-    // Broken gaps in the outer wall.
-    t.fillStyle = '#2b2b2a';
-    for (let i = 0; i < 3; i++) {
-      const side = Math.floor(r() * 4), k = 0.2 + r() * 0.6;
-      if (side === 0) t.fillRect(b.x + b.w * k, b.y, 14, 8);
-      if (side === 1) t.fillRect(b.x + b.w * k, b.y + b.h - 8, 14, 8);
-      if (side === 2) t.fillRect(b.x, b.y + b.h * k, 8, 14);
-      if (side === 3) t.fillRect(b.x + b.w - 8, b.y + b.h * k, 8, 14);
-    }
-    t.strokeStyle = '#77736a'; t.lineWidth = 1; t.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
-  }
-  // Sandbags / low walls.
-  for (const w of map.walls) {
-    t.fillStyle = 'rgba(0,0,0,0.4)'; t.fillRect(w.x + 3, w.y + 4, w.w, w.h);
-    const horiz = w.w > w.h, n = Math.max(2, Math.round((horiz ? w.w : w.h) / 14));
-    for (let i = 0; i < n; i++) {
-      const k = i / n, sz = (horiz ? w.w : w.h) / n;
-      const x = horiz ? w.x + k * w.w : w.x, y = horiz ? w.y : w.y + k * w.h;
-      t.fillStyle = i % 2 ? '#8a7a55' : '#9a8960';
-      roundRect(t, x + 0.5, y + 0.5, horiz ? sz - 1 : w.w - 1, horiz ? w.h - 1 : sz - 1, 4); t.fill();
-      t.strokeStyle = '#4f4430'; t.lineWidth = 1; t.stroke();
-    }
-  }
-  return c;
-}
-
-function roundRect(c, x, y, w, h, r) {
-  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
-}
-
 function addCorpse(m) {
   const t = G.terrain.getContext('2d');
   const col = COLORS[m.o];
@@ -241,7 +188,10 @@ function addShot(sh) {
   if (!isVisible(x1, y1) && !isVisible(x2, y2)) return;
   G.tracers.push({ x1, y1, x2, y2, kind, hit, owner, t: 0, life: SHOT_STYLE[kind].life });
   G.effects.push({ type: 'flash', x: x1, y: y1, t: 0, life: 0.06, r: kind === 4 ? 14 : kind === 3 ? 10 : 5 });
-  if (hit && kind !== 4) G.effects.push({ type: 'spark', x: x2, y: y2, t: 0, life: 0.15 });
+  if (hit && kind !== 4) G.effects.push({ type: kind === 7 ? 'zap' : 'spark', x: x2, y: y2, t: 0, life: kind === 7 ? 0.25 : 0.15 });
+  if (kind === 2 || kind === 3 || kind === 4) {
+    G.effects.push({ type: 'smoke', x: x1, y: y1, vx: (Math.random() - 0.5) * 20, vy: -10 - Math.random() * 10, r: kind === 4 ? 14 : 7, t: 0, life: 0.9 });
+  }
   sfx(['rifle', 'pistol', 'repeater', 'lance', 'cannon', 'repeater', 'rifle', 'blade'][kind], x1, y1);
 }
 
@@ -395,14 +345,14 @@ function draw(v, dt) {
   ctx.drawImage(G.terrain, 0, 0);
 
   drawPoints(v.snap);
-  drawHQs();
+  drawHQs(v.snap);
 
   const visible = v.squads.filter(squadVisible);
   // Selection rings and cover markers under units.
   for (const s of visible) {
     if (!G.sel.has(s.id)) continue;
     for (const m of s.ms) {
-      const r = (s.def.radius || 8) + 4;
+      const r = (s.def.radius || 10) + 4;
       ctx.strokeStyle = '#8be37a'; ctx.lineWidth = 1.5 / cam.z;
       ctx.beginPath(); ctx.ellipse(m.x, m.y + 2, r, r * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
     }
@@ -414,6 +364,7 @@ function draw(v, dt) {
   for (const s of visible) drawSquadOverlay(s);
   drawFog(W, H);
   drawCommandPreview(v);
+  drawAtmosphere(W, H, dt);
 
   // Drag box (screen space).
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -439,7 +390,18 @@ function drawPoints(snap) {
       ctx.strokeStyle = COLORS[val > 0 ? 1 : 2].light; ctx.lineWidth = 5;
       ctx.beginPath(); ctx.arc(p.x, p.y, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.abs(val)); ctx.stroke();
     }
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.arc(p.x, p.y, 24, 0, Math.PI * 2); ctx.fill();
+    // Stone plinth with a gold rim.
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.arc(p.x + 4, p.y + 5, 27, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5d574c'; ctx.beginPath(); ctx.arc(p.x, p.y, 27, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#b8923e'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'rgba(10,10,8,0.75)'; ctx.beginPath(); ctx.arc(p.x, p.y, 22, 0, Math.PI * 2); ctx.fill();
+    if (owner) {
+      // Banner on a pole in the owner's colors.
+      ctx.strokeStyle = '#2a2622'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + 30, p.y + 10); ctx.lineTo(p.x + 30, p.y - 34); ctx.stroke();
+      const wave = Math.sin(performance.now() / 300 + i) * 3;
+      ctx.fillStyle = COLORS[owner].body; ctx.beginPath(); ctx.moveTo(p.x + 31, p.y - 34); ctx.lineTo(p.x + 52, p.y - 31 + wave); ctx.lineTo(p.x + 47, p.y - 25 + wave * 0.5); ctx.lineTo(p.x + 52, p.y - 19 + wave); ctx.lineTo(p.x + 31, p.y - 18); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = COLORS[owner].trim; ctx.lineWidth = 1; ctx.stroke();
+    }
     ctx.fillStyle = contested ? '#ffcf4a' : owner ? col : '#ccc';
     if (p.type === 'vp') drawStar(p.x, p.y, 16, 7);
     else {
@@ -458,67 +420,66 @@ function drawStar(x, y, R, r) {
   ctx.closePath(); ctx.fill();
 }
 
-function drawHQs() {
+function drawHQs(snap) {
   for (const p of [1, 2]) {
-    const h = G.map.hq[p], col = COLORS[p];
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(h.x - 62, h.y - 56, 130, 120);
-    ctx.fillStyle = col.dark; ctx.fillRect(h.x - 65, h.y - 60, 130, 120);
-    ctx.strokeStyle = col.trim; ctx.lineWidth = 4; ctx.strokeRect(h.x - 63, h.y - 58, 126, 116);
-    ctx.fillStyle = col.body; ctx.fillRect(h.x - 40, h.y - 35, 80, 70);
-    ctx.fillStyle = col.trim; ctx.beginPath(); ctx.arc(h.x, h.y, 18, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = col.dark; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('HQ', h.x, h.y + 1);
+    const h = G.map.hq[p];
+    ART.drawSprite(ctx, ART.fortress(G.schemes[p]), h.x, h.y, 0, 1);
     ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(h.x, h.y, 300, 0, Math.PI * 2); ctx.stroke();
   }
+  const h = G.map.hq[G.you];
+  if (G.hqSel) {
+    ctx.strokeStyle = '#8be37a'; ctx.lineWidth = 2.5 / G.cam.z;
+    ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = Math.PI / 8 + i * Math.PI / 4; ctx.lineTo(h.x + Math.cos(a) * 92, h.y + Math.sin(a) * 92); } ctx.closePath(); ctx.stroke();
+  }
+  const ry = snap.pl[G.you].ry;
+  if (ry) {
+    const [x, y] = ry;
+    if (G.hqSel) {
+      ctx.strokeStyle = 'rgba(139,227,122,0.6)'; ctx.lineWidth = 2 / G.cam.z; ctx.setLineDash([10, 8]);
+      ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    drawRallyFlag(x, y);
+  }
+}
+
+function drawRallyFlag(x, y) {
+  const col = COLORS[G.you], wave = Math.sin(performance.now() / 250) * 2.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 2, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#d8ad4a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 36); ctx.stroke();
+  ctx.fillStyle = col.body; ctx.beginPath(); ctx.moveTo(x + 1, y - 36); ctx.lineTo(x + 22, y - 32 + wave); ctx.lineTo(x + 1, y - 24); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = col.trim; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#d8ad4a'; ctx.beginPath(); ctx.arc(x, y - 37, 2.5, 0, Math.PI * 2); ctx.fill();
+}
+
+function spriteKind(s, m) {
+  if (s.t === 'assault') return 'hammer';
+  if (s.t === 'heavy' && m.slot === 0) return 'repeater';
+  if (s.t === 'lance' && m.slot === 0) return 'lance';
+  return 'rifle';
 }
 
 function drawModel(s, m) {
-  const col = COLORS[s.o];
-  if (s.def.armor) { drawTank(s, m, col); return; }
-  const lift = m.jz || 0;
-  const sc = 1 + lift * 0.5;
-  // Shadow.
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.beginPath(); ctx.ellipse(m.x + 2 + lift * 14, m.y + 3 + lift * 18, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.save();
-  ctx.translate(m.x, m.y - lift * 10); ctx.rotate(m.face); ctx.scale(sc, sc);
-  // Weapon.
-  const heavy = (s.t === 'heavy' || s.t === 'lance') && m.slot === 0;
-  ctx.strokeStyle = s.t === 'lance' && m.slot === 0 ? '#2a3a40' : '#1a1a1a';
-  ctx.lineWidth = heavy ? 4 : 2.6;
-  ctx.beginPath(); ctx.moveTo(2, 3); ctx.lineTo(heavy ? 18 : 13, 3); ctx.stroke();
-  // Jump pack.
-  if (s.t === 'assault') {
-    ctx.fillStyle = '#333'; ctx.fillRect(-11, -5, 5, 10);
-    if (lift > 0.05) { ctx.fillStyle = 'rgba(255,170,60,0.9)'; ctx.beginPath(); ctx.arc(-13, 0, 3 + Math.random() * 3, 0, Math.PI * 2); ctx.fill(); }
+  const scheme = G.schemes[s.o];
+  if (s.def.armor) {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.save(); ctx.translate(m.x + 6, m.y + 7); ctx.rotate(m.face); ctx.fillRect(-24, -19, 48, 38); ctx.restore();
+    ART.drawSprite(ctx, ART.tank(scheme), m.x, m.y, m.face, 0.9);
+    return;
   }
-  // Body and pauldrons.
-  ctx.fillStyle = col.body; ctx.strokeStyle = '#0a0a0a'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = col.trim;
-  ctx.beginPath(); ctx.arc(-1, -7, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.arc(-1, 7, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  // Helmet.
-  ctx.fillStyle = col.dark; ctx.beginPath(); ctx.arc(2, 0, 3.6, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = s.o === 1 ? '#9fe8ff' : '#7dff7d'; ctx.fillRect(4, -1.6, 1.6, 3.2);
-  ctx.restore();
-}
-
-function drawTank(s, m, col) {
-  ctx.save();
-  ctx.translate(m.x, m.y);
-  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(-20, -13, 46, 32);
-  ctx.rotate(m.face);
-  ctx.fillStyle = '#1b1b1b'; ctx.fillRect(-24, -17, 48, 8); ctx.fillRect(-24, 9, 48, 8);
-  ctx.fillStyle = '#3a3a3a';
-  for (let i = -22; i < 24; i += 6) { ctx.fillRect(i, -17, 2, 8); ctx.fillRect(i, 9, 2, 8); }
-  ctx.fillStyle = col.body; ctx.strokeStyle = '#0a0a0a'; ctx.lineWidth = 1.5;
-  ctx.fillRect(-21, -11, 42, 22); ctx.strokeRect(-21, -11, 42, 22);
-  ctx.fillStyle = col.trim; ctx.fillRect(14, -11, 7, 22);
-  ctx.fillStyle = '#151515'; ctx.fillRect(4, -2.5, 30, 5);
-  ctx.fillStyle = col.dark; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.restore();
+  const lift = m.jz || 0;
+  // Shadow stays on the ground while the model is in the air.
+  ctx.fillStyle = `rgba(0,0,0,${0.42 - lift * 0.2})`;
+  ctx.beginPath(); ctx.ellipse(m.x + 3 + lift * 14, m.y + 4 + lift * 18, 11 - lift * 3, 9 - lift * 3, 0, 0, Math.PI * 2); ctx.fill();
+  const y = m.y - lift * 12;
+  if (lift > 0.05) {
+    // Jump pack thrust.
+    const bx = m.x - Math.cos(m.face) * 13, by = y - Math.sin(m.face) * 13;
+    const g = ctx.createRadialGradient(bx, by, 0, bx, by, 10 + Math.random() * 5);
+    g.addColorStop(0, 'rgba(255,240,180,0.95)'); g.addColorStop(0.4, 'rgba(255,140,40,0.7)'); g.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, 15, 0, Math.PI * 2); ctx.fill();
+  }
+  ART.drawSprite(ctx, ART.marine(scheme, spriteKind(s, m)), m.x, y, m.face, 0.95 * (1 + lift * 0.35));
 }
 
 function drawGrenade(p) {
@@ -537,8 +498,18 @@ function drawEffects(dt) {
     ctx.globalAlpha = 1 - k;
     ctx.strokeStyle = st.c; ctx.lineWidth = st.w;
     ctx.beginPath();
-    if (t.kind === 3) { ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); }
-    else {
+    if (t.kind === 3) {
+      ctx.save(); ctx.strokeStyle = 'rgba(95,240,255,0.25)'; ctx.lineWidth = 10;
+      ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); ctx.restore();
+      ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2);
+    } else if (t.kind === 7) {
+      // Crackling arc from a power hammer strike.
+      ctx.moveTo(t.x1, t.y1);
+      for (let i = 1; i <= 5; i++) {
+        const f = i / 5;
+        ctx.lineTo(t.x1 + (t.x2 - t.x1) * f + (Math.random() - 0.5) * 10, t.y1 + (t.y2 - t.y1) * f + (Math.random() - 0.5) * 10);
+      }
+    } else {
       // Short streak travelling down the line of fire.
       const a = Math.min(1, k * 1.6), b = Math.max(0, a - 0.35);
       ctx.moveTo(t.x1 + (t.x2 - t.x1) * b, t.y1 + (t.y2 - t.y1) * b);
@@ -554,6 +525,11 @@ function drawEffects(dt) {
     const k = e.t / e.life;
     if (e.type === 'flash') {
       ctx.fillStyle = `rgba(255,220,120,${1 - k})`; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === 'smoke') {
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.fillStyle = `rgba(150,140,125,${0.35 * (1 - k)})`; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (0.6 + k), 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === 'zap') {
+      ctx.fillStyle = `rgba(140,220,255,${1 - k})`; ctx.beginPath(); ctx.arc(e.x, e.y, 6 + k * 10, 0, Math.PI * 2); ctx.fill();
     } else if (e.type === 'spark') {
       ctx.fillStyle = `rgba(255,120,80,${1 - k})`; ctx.beginPath(); ctx.arc(e.x, e.y, 3 + k * 4, 0, Math.PI * 2); ctx.fill();
     } else if (e.type === 'boom') {
@@ -617,6 +593,31 @@ function drawFog(W, H) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(fogCanvas, 0, 0); ctx.restore();
 }
 
+// Screen-space vignette and drifting dust.
+const vignette = document.createElement('canvas');
+const motes = Array.from({ length: 45 }, () => ({ x: Math.random(), y: Math.random(), s: 0.5 + Math.random() * 1.8, v: 0.004 + Math.random() * 0.012 }));
+function drawAtmosphere(W, H, dt) {
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (vignette.width !== W || vignette.height !== H) {
+    vignette.width = W; vignette.height = H;
+    const v = vignette.getContext('2d');
+    const g = v.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(20,10,0,0.55)');
+    v.fillStyle = g; v.fillRect(0, 0, W, H);
+    const w = v.createLinearGradient(0, 0, 0, H);
+    w.addColorStop(0, 'rgba(255,190,110,0.07)'); w.addColorStop(1, 'rgba(255,140,60,0.02)');
+    v.fillStyle = w; v.fillRect(0, 0, W, H);
+  }
+  ctx.drawImage(vignette, 0, 0);
+  ctx.fillStyle = 'rgba(255,225,170,0.35)';
+  for (const m of motes) {
+    m.x += m.v * dt; m.y += Math.sin(performance.now() / 2000 + m.s * 9) * 0.0004;
+    if (m.x > 1) m.x -= 1;
+    ctx.fillRect(m.x * W, m.y * H, m.s, m.s);
+  }
+  ctx.restore();
+}
+
 function drawCommandPreview(v) {
   const w = screenToWorld(mouse.sx, mouse.sy);
   const mine = v.squads.filter(s => G.sel.has(s.id) && s.o === G.you);
@@ -643,7 +644,7 @@ function drawCommandPreview(v) {
       ctx.beginPath(); ctx.arc(G.marker.x, G.marker.y, 6 + k * 16, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
     }
   }
-  canvas.style.cursor = G.mode ? 'crosshair' : hover && hover.o !== G.you && mine.length ? 'crosshair' : 'default';
+  canvas.style.cursor = rdrag && rdrag.moved ? 'grabbing' : G.mode || G.hqSel ? 'crosshair' : hover && hover.o !== G.you && mine.length ? 'crosshair' : 'default';
 }
 
 function drawMinimap(v) {
@@ -702,8 +703,14 @@ function updateHud(v) {
   // Selection panel.
   const sel = mine.filter(q => G.sel.has(q.id));
   let html;
-  if (!sel.length) {
-    html = `<div class="info"><h3>No squad selected</h3><div class="desc">Left-click or drag to select squads. Right-click to move or attack. Capture points to earn resources; hold victory points to drain enemy tickets.</div></div>`;
+  if (G.hqSel) {
+    const ry = s.pl[G.you].ry;
+    html = `<div class="info"><h3>Headquarters</h3>
+      <div class="desc">Right-click anywhere on the map to set a rally point. New units walk there when they are ready. Build units with the buttons on the right.</div>
+      <div class="meter">Rally point: ${ry ? 'set' : 'none (units gather in front of the HQ)'}</div></div>
+      <div class="cmds"><button data-cmd="clearrally" ${ry ? '' : 'disabled'}>Clear rally<br>point</button></div>`;
+  } else if (!sel.length) {
+    html = `<div class="info"><h3>No squad selected</h3><div class="desc">Left-click or drag to select squads. Right-click to move or attack. Left-click your HQ, then right-click the map to set a rally point. Capture points to earn resources; hold victory points to drain enemy tickets.</div></div>`;
   } else {
     const q = sel[0];
     const head = sel.length > 1 ? `${sel.length} squads selected` : q.def.name;
@@ -717,8 +724,8 @@ function updateHud(v) {
       <div class="meter">Suppression<div class="bar"><div class="fill" style="width:${q.sp}%;background:${q.sp >= 80 ? '#f33' : q.sp >= 40 ? '#fb3' : '#cc9'}"></div></div></div>
       <div class="meter">Veterancy ${xpNext ? `${q.xp}/${xpNext}` : 'max'}${q.rq ? ` · reinforcing ${q.rq}` : ''}</div></div>
       <div class="cmds">
-        <button data-cmd="amove" class="${G.mode === 'amove' ? 'active' : ''}">Attack-move<br>(A)</button>
-        <button data-cmd="stop">Stop<br>(S)</button>
+        <button data-cmd="amove" class="${G.mode === 'amove' ? 'active' : ''}">Attack-move<br>(Q)</button>
+        <button data-cmd="stop">Stop<br>(E)</button>
         <button data-cmd="retreat">Retreat<br>(R)</button>
         <button data-cmd="reinforce" ${nearHq ? '' : 'disabled'} title="Squads near HQ only">Reinforce<br>(T) ${q.def.reinforce || ''}</button>
         <button data-cmd="ability" class="${G.mode === 'ability' ? 'active' : ''}" ${ab && !ab.cd ? '' : 'disabled'}>${ab ? (ab.def.ability === 'grenade' ? 'Frag grenade' : 'Jump') + `<br>(G) ${ab.cd ? ab.cd + 's' : G.abilities[ab.def.ability].pow + 'P'}` : 'No ability'}</button>
@@ -745,6 +752,7 @@ $('queue').addEventListener('mousedown', e => {
 $('cards').addEventListener('mousedown', e => {
   const c = e.target.closest('.card'); if (!c) return;
   const id = Number(c.dataset.id);
+  G.hqSel = false;
   if (e.shiftKey) { G.sel.has(id) ? G.sel.delete(id) : G.sel.add(id); }
   else {
     if (G.sel.size === 1 && G.sel.has(id)) centerOn([id]);
@@ -758,6 +766,7 @@ $('selpanel').addEventListener('mousedown', e => {
 });
 
 function runCommand(cmd) {
+  if (cmd === 'clearrally') { send({ t: 'cmd', c: { type: 'rally', x: null } }); sfx('click'); return; }
   const ids = [...G.sel];
   if (!ids.length) return;
   if (cmd === 'amove') G.mode = G.mode === 'amove' ? null : 'amove';
@@ -768,7 +777,7 @@ function runCommand(cmd) {
 
 // ----------------------------------------------------------------- Input ---
 const mouse = { sx: 0, sy: 0, inside: false };
-let drag = null, hover = null, mid = null;
+let drag = null, hover = null, mid = null, rdrag = null;
 const keys = new Set();
 
 function screenToWorld(sx, sy) { return { x: G.cam.x + sx / G.cam.z, y: G.cam.y + sy / G.cam.z }; }
@@ -779,7 +788,7 @@ function pickSquad(wx, wy) {
   for (const s of view.squads) {
     if (!squadVisible(s)) continue;
     for (const m of s.ms) {
-      const d = Math.hypot(m.x - wx, m.y - wy) - (s.def.radius || 8);
+      const d = Math.hypot(m.x - wx, m.y - wy) - (s.def.radius || 10);
       if (d < 10 / Math.min(1, G.cam.z) && d < bd) { bd = d; best = s; }
     }
   }
@@ -787,9 +796,14 @@ function pickSquad(wx, wy) {
 }
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-canvas.addEventListener('mousemove', e => {
-  mouse.sx = e.clientX; mouse.sy = e.clientY; mouse.inside = true;
+addEventListener('mousemove', e => {
+  mouse.sx = e.clientX; mouse.sy = e.clientY; mouse.inside = e.target === canvas;
   if (!G) return;
+  // Right-button drag scrolls the map.
+  if (rdrag) {
+    if (!rdrag.moved && Math.hypot(e.clientX - rdrag.sx, e.clientY - rdrag.sy) > 8) rdrag.moved = true;
+    if (rdrag.moved) { G.cam.x = rdrag.cx - (e.clientX - rdrag.sx) / G.cam.z; G.cam.y = rdrag.cy - (e.clientY - rdrag.sy) / G.cam.z; clampCam(); }
+  }
   if (mid) { G.cam.x = mid.cx - (e.clientX - mid.sx) / G.cam.z; G.cam.y = mid.cy - (e.clientY - mid.sy) / G.cam.z; clampCam(); }
   if (drag && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) drag.box = true;
   const w = screenToWorld(e.clientX, e.clientY);
@@ -801,10 +815,7 @@ canvas.addEventListener('mousedown', e => {
   if (!G || G.over) return;
   const w = screenToWorld(e.clientX, e.clientY);
   if (e.button === 1) { mid = { sx: e.clientX, sy: e.clientY, cx: G.cam.x, cy: G.cam.y }; e.preventDefault(); return; }
-  if (e.button === 2) {
-    if (G.mode) { G.mode = null; return; }
-    issueOrder(w, false); return;
-  }
+  if (e.button === 2) { rdrag = { sx: e.clientX, sy: e.clientY, cx: G.cam.x, cy: G.cam.y, moved: false }; return; }
   if (e.button === 0) {
     if (G.mode === 'amove') { issueOrder(w, true); if (!e.shiftKey) G.mode = null; return; }
     if (G.mode === 'ability') { castAbility(w); if (!e.shiftKey) G.mode = null; return; }
@@ -813,9 +824,18 @@ canvas.addEventListener('mousedown', e => {
 });
 addEventListener('mouseup', e => {
   if (e.button === 1) mid = null;
+  if (e.button === 2 && rdrag && G) {
+    // A right-click without dragging gives an order (or cancels targeting).
+    if (!rdrag.moved) {
+      if (G.mode) G.mode = null;
+      else issueOrder(screenToWorld(e.clientX, e.clientY), false);
+    }
+    rdrag = null;
+    return;
+  }
   if (e.button !== 0 || !drag || !G) return;
   const add = drag.shift;
-  if (!add) G.sel.clear();
+  if (!add) { G.sel.clear(); G.hqSel = false; }
   if (drag.box) {
     const a = screenToWorld(Math.min(drag.sx, e.clientX), Math.min(drag.sy, e.clientY));
     const b = screenToWorld(Math.max(drag.sx, e.clientX), Math.max(drag.sy, e.clientY));
@@ -834,6 +854,8 @@ addEventListener('mouseup', e => {
         for (const q of view.squads) if (q.o === G.you && q.t === s.t && onScreen(q.cx, q.cy)) G.sel.add(q.id);
       }
       G.lastClick = { id: s.id, t: now };
+    } else if (!add && !s && onOwnHq(w)) {
+      G.hqSel = true; sfx('click');
     }
   }
   if (G.sel.size) sfx('click');
@@ -848,12 +870,28 @@ canvas.addEventListener('wheel', e => {
   clampCam();
 }, { passive: false });
 
+function onOwnHq(w) {
+  const h = G.map.hq[G.you];
+  return Math.abs(w.x - h.x) < 85 && Math.abs(w.y - h.y) < 85;
+}
+
+function selectHq() {
+  G.sel.clear(); G.hqSel = true;
+  const h = G.map.hq[G.you];
+  G.cam.x = h.x - canvas.width / 2 / G.cam.z; G.cam.y = h.y - canvas.height / 2 / G.cam.z; clampCam();
+}
+
 function onScreen(x, y) {
   const a = screenToWorld(0, 0), b = screenToWorld(canvas.width, canvas.height);
   return x >= a.x && x <= b.x && y >= a.y && y <= b.y;
 }
 
 function issueOrder(w, amove) {
+  if (G.hqSel) {
+    send({ t: 'cmd', c: { type: 'rally', x: w.x, y: w.y } });
+    G.marker = { x: w.x, y: w.y, t: 0, color: '#d8ad4a' };
+    toast('Rally point set'); return;
+  }
   const ids = [...G.sel];
   if (!ids.length) return;
   const target = !amove && pickSquad(w.x, w.y);
@@ -885,7 +923,8 @@ addEventListener('keydown', e => {
   if (!G || G.over || e.target.tagName === 'INPUT') return;
   initAudio(); audio?.resume?.();
   const k = e.key.toLowerCase();
-  keys.add(e.key);
+  keys.add(e.code);
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code) && !e.ctrlKey && !e.metaKey) return; // camera
   if (/^[1-9]$/.test(k)) {
     if (e.ctrlKey || e.metaKey) { G.groups[k] = [...G.sel]; e.preventDefault(); toast(`Group ${k} set`); return; }
     const ids = (G.groups[k] || []).filter(id => view.squads.some(s => s.id === id));
@@ -893,30 +932,34 @@ addEventListener('keydown', e => {
     const now = performance.now();
     if (G.lastTap.key === k && now - G.lastTap.t < 400) centerOn(ids);
     G.lastTap = { key: k, t: now };
-    G.sel = new Set(ids); return;
+    G.sel = new Set(ids); G.hqSel = false; return;
   }
   if (BUILD_KEYS[k]) { send({ t: 'cmd', c: { type: 'build', unit: BUILD_KEYS[k] } }); sfx('click'); return; }
   switch (k) {
-    case 'a': runCommand('amove'); break;
-    case 's': runCommand('stop'); break;
+    case 'q': runCommand('amove'); break;
+    case 'e': runCommand('stop'); break;
+    case 'h': selectHq(); break;
     case 'r': runCommand('retreat'); break;
     case 't': runCommand('reinforce'); break;
     case 'g': runCommand('ability'); break;
-    case 'escape': G.mode = null; G.sel.clear(); break;
+    case 'escape': G.mode = null; G.sel.clear(); G.hqSel = false; break;
     case 'm': $('btn-sound').click(); break;
     case ' ': centerOn([...G.sel]); e.preventDefault(); break;
     case 'home': { const h = G.map.hq[G.you]; G.cam.x = h.x - canvas.width / 2 / G.cam.z; G.cam.y = h.y - canvas.height / 2 / G.cam.z; clampCam(); break; }
-    case 'tab': e.preventDefault(); { const own = view.squads.filter(s => s.o === G.you); if (own.length) G.sel = new Set(own.map(s => s.id)); } break;
+    case 'tab': e.preventDefault(); { const own = view.squads.filter(s => s.o === G.you); if (own.length) { G.sel = new Set(own.map(s => s.id)); G.hqSel = false; } } break;
   }
 });
-addEventListener('keyup', e => keys.delete(e.key));
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
 
 function updateCamera(dt) {
   const sp = 900 / G.cam.z * dt;
   let dx = 0, dy = 0;
-  if (keys.has('ArrowLeft')) dx -= sp; if (keys.has('ArrowRight')) dx += sp;
-  if (keys.has('ArrowUp')) dy -= sp; if (keys.has('ArrowDown')) dy += sp;
-  if (mouse.inside && !drag && !mid) {
+  if (keys.has('ArrowLeft') || keys.has('KeyA')) dx -= sp;
+  if (keys.has('ArrowRight') || keys.has('KeyD')) dx += sp;
+  if (keys.has('ArrowUp') || keys.has('KeyW')) dy -= sp;
+  if (keys.has('ArrowDown') || keys.has('KeyS')) dy += sp;
+  if (mouse.inside && !drag && !mid && !rdrag) {
     const m = 6;
     if (mouse.sx <= m) dx -= sp; if (mouse.sx >= canvas.width - m) dx += sp;
     if (mouse.sy <= m) dy -= sp; if (mouse.sy >= canvas.height - m) dy += sp;

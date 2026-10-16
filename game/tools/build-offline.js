@@ -22,7 +22,7 @@ const runtime = `
 ${modules}
   const { Game, ABILITIES } = require('./sim');
   const { AI } = require('./ai');
-  const { TICK_RATE, UNITS, WEAPONS, ECON, MAP } = require('./data');
+  const { TICK_RATE, UNITS, WEAPONS, ECON, MAP, resolveSchemes } = require('./data');
 
   // Stands in for the WebSocket: same messages, delivered in-page.
   window.IronfallLocal = function (deliver) {
@@ -36,7 +36,7 @@ ${modules}
           game = new Game();
           const ai = new AI(game, 2);
           const name = String(msg.name || '').replace(/[^\\w \\-]/g, '').trim().slice(0, 16) || 'Commander';
-          post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], map: MAP, units: UNITS, weapons: WEAPONS,
+          post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], schemes: resolveSchemes(msg.scheme, 'crimson'), map: MAP, units: UNITS, weapons: WEAPONS,
             abilities: ABILITIES, econ: ECON, tickRate: TICK_RATE });
           timer = setInterval(() => {
             ai.update();
@@ -54,14 +54,18 @@ ${modules}
 })();`;
 
 const html = read('public/index.html');
-const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="client.js">'));
+const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="art.js">'));
 const out = `<title>Ironfall</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap">
 <style>
 ${read('public/style.css')}
 </style>
 ${body.trim()}
 <script>
 ${runtime}
+</script>
+<script>
+${read('public/art.js')}
 </script>
 <script>
 ${read('public/client.js')}

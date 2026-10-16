@@ -54,10 +54,11 @@ check at `/health`.
 
 - Left-click or drag to select. Shift adds to the selection. Double-click selects every squad of that type on screen.
 - Right-click to move, or right-click an enemy to attack.
-- **A** + click: attack-move. **S**: stop. **R**: retreat. **T**: reinforce. **G** + click: ability.
+- **Q** + click: attack-move. **E**: stop. **R**: retreat. **T**: reinforce. **G** + click: ability.
+- **Rally point:** left-click your HQ (or press **H**), then right-click the map. New units walk there.
 - **Ctrl+1–9** sets a control group; **1–9** selects it (press twice to jump the camera there).
 - **Tab** selects all your squads. **Space** centers on the selection. **Home** jumps to HQ.
-- Move the camera with the arrow keys, the screen edges or a middle-mouse drag. The wheel zooms. Click the minimap to jump; right-click it to move there.
+- Move the camera with **W A S D** or the arrow keys, by holding the right mouse button and dragging, with the screen edges, or with a middle-mouse drag. The wheel zooms. Click the minimap to jump; right-click it to move there.
 - **M** toggles sound.
 
 ## Code layout
@@ -71,6 +72,10 @@ server/index.js  static file server and WebSocket rooms
 public/          canvas client: rendering, fog of war, HUD, input, synthesized sound
 test/            headless AI-vs-AI matches and an end-to-end WebSocket test
 ```
+
+Players pick an armor scheme on the menu (Azure Guard, Crimson Host, Emerald Wardens, Storm Grey). All unit and terrain art is drawn in code in `public/art.js`.
+
+`npm run build:offline` writes `dist/ironfall.html`, a single-file vs-AI version that needs no server.
 
 Run `npm test` to play three AI-vs-AI matches headlessly and run a two-client
 network check.

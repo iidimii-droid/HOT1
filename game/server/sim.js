@@ -5,7 +5,7 @@ const { TICK_RATE, WEAPONS, UNITS, ECON, MAP } = require('./data');
 const { dist, segRect, circleRectPush, Grid } = require('./geo');
 
 const DT = 1 / TICK_RATE;
-const INF_RADIUS = 8;
+const INF_RADIUS = 10;
 const CAPTURE_RADIUS = 75;
 const BASE_RADIUS = 300;
 const VET_XP = [250, 700, 1400];
@@ -41,7 +41,7 @@ class Game {
   }
 
   newPlayer() {
-    return { req: ECON.startReq, pow: ECON.startPow, tickets: ECON.tickets, queue: [], kills: 0, losses: 0 };
+    return { req: ECON.startReq, pow: ECON.startPow, tickets: ECON.tickets, queue: [], kills: 0, losses: 0, rally: null };
   }
   forward(p) { return p === 1 ? 1 : -1; }
   resetEvents() { this.shots = []; this.booms = []; this.msgs = []; }
@@ -87,6 +87,14 @@ class Game {
         return err;
       }
       case 'build': return this.build(player, c.unit);
+      case 'rally': {
+        // New units from the HQ walk to this point. null clears it.
+        if (c.x === null) { this.players[player].rally = null; return null; }
+        const x = num(c.x), y = num(c.y);
+        if (x === null || y === null) return null;
+        this.players[player].rally = { x: clamp(x, 20, MAP.w - 20), y: clamp(y, 20, MAP.h - 20) };
+        return null;
+      }
       case 'cancel': {
         const pl = this.players[player];
         const i = num(c.index);
@@ -193,8 +201,8 @@ class Game {
     // Line formation perpendicular to the direction of travel.
     s.models.forEach((m, i) => {
       const k = i - (n - 1) / 2;
-      let tx = x + Math.cos(ang + Math.PI / 2) * k * 20 - Math.cos(ang) * Math.abs(k) * 6;
-      let ty = y + Math.sin(ang + Math.PI / 2) * k * 20 - Math.sin(ang) * Math.abs(k) * 6;
+      let tx = x + Math.cos(ang + Math.PI / 2) * k * 25 - Math.cos(ang) * Math.abs(k) * 7;
+      let ty = y + Math.sin(ang + Math.PI / 2) * k * 25 - Math.sin(ang) * Math.abs(k) * 7;
       if (grid.isBlockedAt(tx, ty)) { tx = x; ty = y; }
       m.path = grid.findPath(m.x, m.y, tx, ty);
     });
@@ -253,8 +261,9 @@ class Game {
         if (q.t <= 0) {
           pl.queue.shift();
           const s = this.spawnSquad(p, q.unit);
-          const hq = MAP.hq[p];
-          this.orderMove(s, hq.x + this.forward(p) * 260, hq.y + (this.rand() - 0.5) * 200, false);
+          const hq = MAP.hq[p], rally = pl.rally;
+          if (rally) this.orderMove(s, rally.x + (this.rand() - 0.5) * 60, rally.y + (this.rand() - 0.5) * 60, false);
+          else this.orderMove(s, hq.x + this.forward(p) * 260, hq.y + (this.rand() - 0.5) * 200, false);
           this.msgs.push({ p, text: `${s.def.name} ready`, kind: 'ready' });
         }
       }
@@ -712,6 +721,7 @@ class Game {
         req: Math.floor(x.req), pow: Math.floor(x.pow), tk: Math.ceil(x.tickets), pop: this.popUsed(p),
         inc: x.income ? [r1(x.income.req * 60), r1(x.income.pow * 60)] : [0, 0],
         q: x.queue.map(q => [q.unit, Math.max(0, Math.ceil(q.t))]), k: x.kills, l: x.losses,
+        ry: x.rally ? [r1(x.rally.x), r1(x.rally.y)] : null,
       };
     };
     const sq = [];
