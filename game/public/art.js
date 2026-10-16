@@ -22,7 +22,7 @@ const ART = (() => {
     im.src = src;
   })));
   // World-space size of each painted sprite's square frame.
-  const IMG_BOX = { rifle: 40, heavy: 42, lance: 42, hammer: 42, tank: 66, hq: 200 };
+  const IMG_BOX = { rifle: 50, heavy: 52, lance: 52, hammer: 52, tank: 78, hq: 210 };
   function painted(name, kind) {
     const im = IMG[name];
     return im ? { canvas: im, box: IMG_BOX[kind] } : null;
@@ -420,9 +420,9 @@ const ART = (() => {
     t.globalAlpha = 0.85; t.drawImage(roads, 0, 0); t.globalAlpha = 1;
     // Marble plaza around the central victory point.
     t.save(); t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.clip();
-    t.fillStyle = tiled(t, IMG.marble, 260); t.fillRect(1380, 780, 440, 440);
+    t.fillStyle = tiled(t, IMG.marble, 130); t.fillRect(1380, 780, 440, 440);
     const pg = t.createRadialGradient(1600, 1000, 120, 1600, 1000, 215);
-    pg.addColorStop(0, 'rgba(80,60,30,0.15)'); pg.addColorStop(1, 'rgba(60,45,25,0.6)');
+    pg.addColorStop(0, 'rgba(70,52,28,0.35)'); pg.addColorStop(1, 'rgba(50,38,20,0.7)');
     t.fillStyle = pg; t.fillRect(1380, 780, 440, 440);
     t.restore();
     t.strokeStyle = '#a8873a'; t.lineWidth = 5; t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.stroke();

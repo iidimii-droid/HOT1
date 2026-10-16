@@ -742,7 +742,7 @@ function updateHud(v) {
 function buildProdButtons() {
   $('prod-btns').innerHTML = BUILD_LIST.map(u => {
     const d = G.units[u];
-    return `<button id="build-${u}" data-unit="${u}" title="${d.name}: ${d.desc}"><canvas class="pico" width="56" height="56" data-unit="${u}"></canvas><b>${d.short}</b><span>${d.name.split(' ')[0]}</span><span class="c-req">${d.cost.req}R</span><span class="c-pow">${d.cost.pow ? d.cost.pow + 'P' : '&nbsp;'}</span><span class="key">${KEY_OF[u]}</span></button>`;
+    return `<button id="build-${u}" data-unit="${u}" title="${d.name}: ${d.desc}"><canvas class="pico" width="56" height="56" data-unit="${u}"></canvas><b>${d.short}</b><span class="c-req">${d.cost.req}R</span><span class="c-pow">${d.cost.pow ? d.cost.pow + 'P' : '&nbsp;'}</span><span class="key">${KEY_OF[u]}</span></button>`;
   }).join('');
   // Unit icons drawn from the player's own sprites, facing up.
   const icon = { tactical: 'rifle', heavy: 'repeater', assault: 'hammer', lance: 'lance' };
