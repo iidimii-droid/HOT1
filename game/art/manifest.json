@@ -35,12 +35,13 @@
     "hq_storm": "hf_20261016_050844_6d12ce88-88c8-41ab-a665-dc6459871f96.png"
   },
   "models": {
-    "tank": "hf_20261016_054024_79556d83-3802-4c91-b7af-6cfdbeca1480.glb",
+    "tank": "hf_20261016_064724_26258283-40ed-4470-b021-ff384204d3c6.glb",
     "tank_source_image": "hf_20261016_053941_08dfeb4f-6cbc-4c7d-9c02-e228d3afcaee.png",
     "rifle": "hf_20261016_063313_5ff08023-bb40-4b1c-be73-a1a13c255aa3.glb",
     "heavy": "hf_20261016_063314_58f12753-c2ed-44cf-baef-4afb9565379b.glb",
     "lance": "hf_20261016_063315_e1dcb7b5-4ad9-44d1-aeb7-c7ab93c46264.glb",
     "hammer": "hf_20261016_063316_386cb89c-8c84-416f-a183-7864100dded8.glb",
-    "hq": "hf_20261016_063522_632f6fc9-5de8-4108-8702-0dd9248f7cf4.glb"
+    "hq": "hf_20261016_063522_632f6fc9-5de8-4108-8702-0dd9248f7cf4.glb",
+    "tank_v1": "hf_20261016_054024_79556d83-3802-4c91-b7af-6cfdbeca1480.glb"
   }
 }

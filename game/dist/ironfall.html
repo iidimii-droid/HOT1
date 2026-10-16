@@ -3598,8 +3598,13 @@ const R3D = (() => {
         if (o.isSkinnedMesh) { skinned = true; o.frustumCulled = false; }
         o.castShadow = true; o.receiveShadow = true;
         const m = o.material;
-        m.metalness = spec.metal; m.roughness = 0.45; m.envMapIntensity = 0.9;
-        if (m.map) { m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.needsUpdate = true; }
+        // Models with real metal/roughness maps keep them; flat ones get a default sheen.
+        if (m.metalnessMap || m.roughnessMap) { m.metalness = 1; m.roughness = 1; }
+        else { m.metalness = spec.metal; m.roughness = 0.45; }
+        m.envMapIntensity = 0.9;
+        // Generated emissive maps come at full strength and wash the model out; keep only a faint glow.
+        if (m.emissiveMap) m.emissiveIntensity = 0.15;
+        for (const t of [m.map, m.normalMap, m.metalnessMap, m.emissiveMap]) if (t) { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); t.needsUpdate = true; }
       });
       protos[kind] = { root, clips: gltf.animations || [], skinned };
       // Swap stand-ins already on the field.

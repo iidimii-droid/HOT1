@@ -10,7 +10,7 @@ from PIL import Image
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 # name -> (raw file, max texture size). Facing and scale are set in render3d.js.
 MODELS = {
-    'tank': ('art/raw/tank.glb', 2048), 'hq': ('art/raw/hq.glb', 2048),
+    'tank': ('art/raw/tank.glb', 1536), 'hq': ('art/raw/hq.glb', 2048),
     'rifle': ('art/raw/rifle.glb', 1024), 'heavy': ('art/raw/heavy.glb', 1024),
     'lance': ('art/raw/lance.glb', 1024), 'hammer': ('art/raw/hammer.glb', 1024),
 }
