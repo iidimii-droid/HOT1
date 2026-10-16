@@ -69,13 +69,21 @@ const R3D = (() => {
       renderer.toneMapping = T.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.05;
     }
+    // Render at the screen's real resolution (capped for speed on very dense displays).
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     glCanvas.style.display = 'block';
     scene = new T.Scene();
     scene.background = new T.Color('#3a3226');
     scene.fog = new T.Fog('#5a4a36', 1600, 4200);
     camera = new T.PerspectiveCamera(FOV, 1, 10, 8000);
 
-    scene.add(new T.HemisphereLight('#ffe2b8', '#3b2f22', 0.75));
+    // Soft studio reflections so metal and gold trim catch the light.
+    if (T.RoomEnvironment) {
+      const pm = new T.PMREMGenerator(renderer);
+      scene.environment = pm.fromScene(new T.RoomEnvironment(), 0.04).texture;
+      pm.dispose();
+    }
+    scene.add(new T.HemisphereLight('#ffe2b8', '#3b2f22', scene.environment ? 0.45 : 0.75));
     sun = new T.DirectionalLight('#ffd9a0', 1.6);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -261,7 +269,14 @@ const R3D = (() => {
       const s = 84 / Math.max(size.x, size.z);
       wrap.scale.setScalar(s);
       wrap.userData.forwardOffset = window.IRONFALL_MODELS.tankYaw || 0;
-      wrap.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      wrap.traverse(o => {
+        if (!o.isMesh) return;
+        o.castShadow = true; o.receiveShadow = true;
+        // The generated material is fully matte; give the armor some metallic sheen.
+        const m = o.material;
+        m.metalness = 0.5; m.roughness = 0.42; m.envMapIntensity = 0.9;
+        if (m.map) { m.map.anisotropy = renderer.capabilities.getMaxAnisotropy(); m.map.needsUpdate = true; }
+      });
       tankProto = wrap;
       // Swap procedural tanks already on the field.
       for (const [id, u] of units) if (u.kind === 'tank') { scene.remove(u.obj); units.delete(id); }
@@ -668,5 +683,8 @@ const R3D = (() => {
 
   function markTerrain() { if (!terrainDirty) terrainDirty = performance.now(); }
 
-  return { available, init, render, pick, project, setVisible, markTerrain, kickRecoil };
+  // Inspection hook for automated tests.
+  function debugUnits() { return [...units.values()].filter(u => u.kind === 'tank').map(u => ({ visible: u.obj.visible, pos: u.obj.position.toArray().map(Math.round), children: u.obj.children.length, proto: !!tankProto })); }
+
+  return { available, init, render, pick, project, setVisible, markTerrain, kickRecoil, debugUnits };
 })();

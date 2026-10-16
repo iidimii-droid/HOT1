@@ -7,8 +7,8 @@ import base64, io, json, os, struct
 from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
-MODELS = {'tank': {'file': 'art/raw/tank.glb', 'yaw': 0}}
-TEX = 1024
+MODELS = {'tank': {'file': 'art/raw/tank.glb', 'yaw': 3.14159265}}  # the generated mesh faces -x
+TEX = 2048
 
 
 def shrink(path):
@@ -26,7 +26,7 @@ def shrink(path):
         if i in images:
             im = Image.open(io.BytesIO(chunk)).convert('RGB')
             im.thumbnail((TEX, TEX), Image.LANCZOS)
-            buf = io.BytesIO(); im.save(buf, 'JPEG', quality=84); chunk = buf.getvalue()
+            buf = io.BytesIO(); im.save(buf, 'JPEG', quality=88); chunk = buf.getvalue()
             images[i]['mimeType'] = 'image/jpeg'
         while len(out) % 4: out.append(0)
         nv = dict(v); nv['byteOffset'] = len(out); nv['byteLength'] = len(chunk)

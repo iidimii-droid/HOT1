@@ -947,7 +947,7 @@ canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const before = screenToWorld(e.clientX, e.clientY);
   const cx = G.cam.x + canvas.width / 2 / G.cam.z, cy = G.cam.y + canvas.height / 2 / G.cam.z;
-  G.cam.z = Math.max(0.45, Math.min(1.8, G.cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+  G.cam.z = Math.max(0.45, Math.min(G.r3d ? 3.2 : 1.8, G.cam.z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
   if (G.r3d) {
     // Zoom toward the cursor: move the view center part of the way to the point under it.
     const k = e.deltaY < 0 ? 0.15 : -0.1;

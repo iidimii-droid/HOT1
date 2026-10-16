@@ -75,6 +75,7 @@ ${runtime}
 </script>
 <script src="${THREE_CDN}/build/three.min.js"></script>
 <script src="${THREE_CDN}/examples/js/loaders/GLTFLoader.js"></script>
+<script src="${THREE_CDN}/examples/js/environments/RoomEnvironment.js"></script>
 <script>
 ${assets}
 ${models}
