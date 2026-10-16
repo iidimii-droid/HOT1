@@ -39,7 +39,7 @@ assert(results.every(r => r.kills[0] + r.kills[1] > 0), 'no combat happened');
 {
   const g = new Game({ seed: 9 });
   const sq = [...g.squads.values()].find(s => s.owner === 1);
-  const wall = MAP.walls.find(w => w.x === 1210); // vertical sandbags east of the req point
+  const wall = MAP.walls.find(w => w.x === 1350); // vertical sandbags east of the forward req point
   g.command(1, { type: 'move', ids: [sq.id], x: wall.x - 30, y: wall.y + wall.h / 2 });
   for (let i = 0; i < 20 * 40 && sq.order.type !== 'idle'; i++) g.step();
   const inCover = sq.models.filter(m => g.coverAt(m, { x: 2000, y: m.y }) === 2).length;
@@ -52,8 +52,8 @@ assert(results.every(r => r.kills[0] + r.kills[1] > 0), 'no combat happened');
   for (const s of [...g.squads.values()]) g.squads.delete(s.id);
   const a = g.spawnSquad(1, 'tactical'), b = g.spawnSquad(2, 'tactical');
   const place = (s, x, y) => s.models.forEach((m, i) => { m.x = x; m.y = y + (i - 2) * 24; m.path = []; });
-  place(a, 900, 1500); place(b, 1200, 1500); // 300 apart: in sight (330), out of rifle range (260)
-  a.order = { type: 'idle' }; b.order = { type: 'move', x: 1200, y: 1500 }; b.models.forEach(m => { m.path = []; });
+  place(a, 900, 900); place(b, 1200, 900); // 300 apart: in sight (330), out of rifle range (260)
+  a.order = { type: 'idle' }; b.order = { type: "move", x: 1200, y: 900 }; b.models.forEach(m => { m.path = []; });
   const fired = new Set();
   for (let i = 0; i < 20 * 8; i++) {
     const before = new Map(a.models.map(m => [m.id, m.cd]));
@@ -62,5 +62,18 @@ assert(results.every(r => r.kills[0] + r.kills[1] > 0), 'no combat happened');
   }
   assert(fired.size >= 4, `only ${fired.size} soldiers fired`);
   console.log(`engage: ${fired.size}/5 soldiers fired after first sight`);
+}
+// Destroying the enemy HQ ends the game.
+{
+  const g = new Game({ seed: 3 });
+  for (const s of [...g.squads.values()]) g.squads.delete(s.id);
+  const h = MAP.hq[2];
+  const tanks = [g.spawnSquad(1, 'tank'), g.spawnSquad(1, 'tank')];
+  tanks.forEach((t, i) => { t.models[0].x = h.x - 450; t.models[0].y = h.y - 60 + i * 120; t.models[0].path = []; t.order = { type: 'idle' }; });
+  g.command(1, { type: 'attackhq', ids: tanks.map(t => t.id) });
+  let i = 0;
+  for (; i < 20 * 240 && !g.over; i++) g.step();
+  assert(g.over && g.winner === 1 && g.endReason === 'hq', `HQ not destroyed (hp ${g.hqHp[2]}, over ${g.over})`);
+  console.log(`hq: destroyed by two tanks in ${(i / 20).toFixed(0)}s`);
 }
 console.log('sim-test ok');

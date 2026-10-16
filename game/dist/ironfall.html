@@ -158,7 +158,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
     <details class="howto" open>
       <summary>How to play</summary>
       <ul>
-        <li><b>Win</b> by holding more of the 3 <b>victory points</b> (stars) than the enemy. Their tickets drain until 0.</li>
+        <li><b>Win</b> by holding more of the 3 <b>victory points</b> (stars) than the enemy until their tickets drain to 0, or by <b>destroying the enemy HQ</b> (right-click it with squads selected). Tanks and Lance teams hit it hardest.</li>
         <li><b>Left-click / drag</b> to select squads. <b>Right-click</b> to move, or right-click an enemy to attack.</li>
         <li><b>Rally point:</b> left-click your <b>HQ</b> (or press <b>H</b>), then right-click the map. New units walk there.</li>
         <li><b>A</b> (or <b>Q</b>) then click: attack-move, and every soldier fires at the nearest enemy in range. <b>E</b> stop. <b>Esc</b> cancels the last unit in production. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
@@ -229,7 +229,7 @@ __mods['./data'] = function (module, exports, require) {
 // Static game data: unit definitions and the map. Sent to clients on game start.
 
 const TICK_RATE = 20;
-const WORLD = { w: 3200, h: 2000 };
+const WORLD = { w: 4400, h: 2800 };
 
 // Weapon fields: range (px), dmg, cd (seconds between shots), acc (0..1),
 // pen (damage multiplier against armored targets), supp (suppression per hit),
@@ -242,7 +242,7 @@ const WEAPONS = {
   lance:   { range: 380, dmg: 120,cd: 5.0,  acc: 0.75, pen: 1.0,  supp: 2, setup: 1.5, infAcc: 0.3, infDmg: 40 },
   cannon:  { range: 330, dmg: 55, cd: 3.5,  acc: 0.65, pen: 0.8,  supp: 25, aoe: 45 },
   coax:    { range: 260, dmg: 5,  cd: 0.3,  acc: 0.45, pen: 0.02, supp: 1.2 },
-  bastion: { range: 320, dmg: 16, cd: 0.5,  acc: 0.6,  pen: 0.15, supp: 3 },
+  bastion: { range: 380, dmg: 16, cd: 0.5,  acc: 0.6,  pen: 0.15, supp: 3 },
 };
 
 // Squad definitions. `weapons` lists the weapon carried by each model slot;
@@ -279,11 +279,12 @@ const ECON = {
   startReq: 400, startPow: 40,
   baseReq: 4, basePow: 0.6,           // per second
   reqPoint: 1.6, powPoint: 1.0,        // per owned point per second
-  popCap: 50, tickets: 500,
+  popCap: 50, tickets: 500, hqHp: 3000,
 };
 
 // ---- Map ----------------------------------------------------------------
-// The left half is authored by hand and mirrored for player 2.
+// The left half is authored by hand and mirrored for player 2; `center` items
+// sit on the middle line and are not mirrored.
 function mirrorRect(r) { return { ...r, x: WORLD.w - r.x - r.w }; }
 function mirrorCircle(c) { return { ...c, x: WORLD.w - c.x }; }
 
@@ -291,39 +292,50 @@ function buildMap() {
   const left = {
     // Ruined buildings: block movement and line of sight, heavy cover beside them.
     buildings: [
-      { x: 380, y: 230, w: 170, h: 110 }, { x: 380, y: 1660, w: 170, h: 110 },
-      { x: 960, y: 610, w: 120, h: 170 }, { x: 960, y: 1220, w: 120, h: 170 },
-      { x: 1300, y: 90, w: 130, h: 120 }, { x: 1300, y: 1790, w: 130, h: 120 },
+      { x: 500, y: 300, w: 190, h: 125 }, { x: 500, y: 2375, w: 190, h: 125 },
+      { x: 1300, y: 830, w: 130, h: 190 }, { x: 1300, y: 1780, w: 130, h: 190 },
+      { x: 1780, y: 120, w: 150, h: 130 }, { x: 1780, y: 2550, w: 150, h: 130 },
+      { x: 960, y: 1130, w: 120, h: 120 }, { x: 960, y: 1550, w: 120, h: 120 },
     ],
     // Sandbags and low walls: block movement, heavy cover, do not block sight.
     walls: [
-      { x: 1490, y: 300, w: 16, h: 100 }, { x: 1490, y: 950, w: 16, h: 100 }, { x: 1490, y: 1600, w: 16, h: 100 },
-      { x: 1210, y: 930, w: 16, h: 140 }, { x: 820, y: 330, w: 170, h: 16 }, { x: 820, y: 1654, w: 170, h: 16 },
-      { x: 640, y: 940, w: 16, h: 120 }, { x: 1140, y: 470, w: 120, h: 16 }, { x: 1140, y: 1514, w: 120, h: 16 },
+      { x: 2060, y: 440, w: 16, h: 120 }, { x: 2060, y: 1340, w: 16, h: 120 }, { x: 2060, y: 2240, w: 16, h: 120 },
+      { x: 1350, y: 1330, w: 16, h: 140 }, { x: 520, y: 760, w: 170, h: 16 }, { x: 520, y: 2024, w: 170, h: 16 },
+      { x: 860, y: 1360, w: 16, h: 80 }, { x: 1600, y: 620, w: 140, h: 16 }, { x: 1600, y: 2164, w: 140, h: 16 },
+      { x: 1740, y: 1230, w: 16, h: 110 }, { x: 1740, y: 1460, w: 16, h: 110 },
+      { x: 1340, y: 500, w: 130, h: 16 }, { x: 1340, y: 2284, w: 130, h: 16 },
     ],
     // Craters: light cover, no blocking.
     craters: [
-      { x: 560, y: 760, r: 34 }, { x: 560, y: 1240, r: 34 }, { x: 860, y: 1000, r: 40 },
-      { x: 1080, y: 360, r: 30 }, { x: 1080, y: 1640, r: 30 }, { x: 1380, y: 700, r: 36 },
-      { x: 1380, y: 1300, r: 36 }, { x: 1250, y: 1120, r: 28 }, { x: 760, y: 620, r: 28 },
-      { x: 760, y: 1380, r: 28 }, { x: 1420, y: 480, r: 26 }, { x: 1420, y: 1520, r: 26 },
+      { x: 820, y: 560, r: 34 }, { x: 820, y: 2240, r: 34 }, { x: 760, y: 1400, r: 42 },
+      { x: 1150, y: 640, r: 30 }, { x: 1150, y: 2160, r: 30 }, { x: 1560, y: 1100, r: 38 },
+      { x: 1560, y: 1700, r: 38 }, { x: 1180, y: 1400, r: 30 }, { x: 1900, y: 820, r: 32 },
+      { x: 1900, y: 1980, r: 32 }, { x: 1950, y: 1400, r: 28 }, { x: 600, y: 1050, r: 28 },
+      { x: 600, y: 1750, r: 28 }, { x: 1700, y: 380, r: 26 }, { x: 1700, y: 2420, r: 26 },
     ],
     points: [
-      { type: 'req', x: 700, y: 470 }, { type: 'pow', x: 700, y: 1530 }, { type: 'req', x: 1120, y: 1000 },
+      { type: 'req', x: 650, y: 650 }, { type: 'pow', x: 650, y: 2150 }, { type: 'req', x: 1250, y: 1400 },
+      { type: 'pow', x: 1500, y: 380 }, { type: 'req', x: 1500, y: 2420 },
     ],
   };
+  const center = {
+    buildings: [{ x: 2130, y: 880, w: 140, h: 110 }, { x: 2130, y: 1810, w: 140, h: 110 }],
+    craters: [{ x: 2200, y: 1100, r: 30 }, { x: 2200, y: 1700, r: 30 }],
+  };
+  const hq = [null, { x: 220, y: WORLD.h / 2 }, { x: WORLD.w - 220, y: WORLD.h / 2 }];
   const map = {
-    w: WORLD.w, h: WORLD.h,
-    hq: [null, { x: 170, y: 1000 }, { x: WORLD.w - 170, y: 1000 }],
+    w: WORLD.w, h: WORLD.h, hq,
     captureRadius: 100,
-    buildings: [...left.buildings, ...left.buildings.map(mirrorRect)],
+    hqHalf: 70, // HQ fortress footprint: blocks movement and can be attacked
+    buildings: [...left.buildings, ...left.buildings.map(mirrorRect), ...center.buildings],
     walls: [...left.walls, ...left.walls.map(mirrorRect)],
-    craters: [...left.craters, ...left.craters.map(mirrorCircle)],
+    blocks: [1, 2].map(p => ({ x: hq[p].x - 70, y: hq[p].y - 70, w: 140, h: 140 })),
+    craters: [...left.craters, ...left.craters.map(mirrorCircle), ...center.craters],
     points: [],
   };
   // Mirrored point pairs, then the three victory points in the middle.
   left.points.forEach(p => { map.points.push({ ...p }); map.points.push(mirrorCircle(p)); });
-  map.points.push({ type: 'vp', x: 1600, y: 350 }, { type: 'vp', x: 1600, y: 1000 }, { type: 'vp', x: 1600, y: 1650 });
+  map.points.push({ type: 'vp', x: WORLD.w / 2, y: 500 }, { type: 'vp', x: WORLD.w / 2, y: WORLD.h / 2 }, { type: 'vp', x: WORLD.w / 2, y: WORLD.h - 500 });
   map.points.forEach((p, i) => { p.id = i; });
   return map;
 }
@@ -392,7 +404,7 @@ class Grid {
     this.cols = Math.ceil(map.w / CELL);
     this.rows = Math.ceil(map.h / CELL);
     this.blocked = new Uint8Array(this.cols * this.rows);
-    const solids = [...map.buildings, ...map.walls];
+    const solids = [...map.buildings, ...map.walls, ...(map.blocks || [])];
     this.solids = solids;
     this.inflate = inflate;
     for (let r = 0; r < this.rows; r++) {
@@ -558,7 +570,7 @@ const SHOT_KIND = { rifle: 0, pistol: 1, repeater: 2, lance: 3, cannon: 4, coax:
 
 const infGrid = new Grid(MAP, INF_RADIUS + 2);
 const tankGrid = new Grid(MAP, 22);
-const solids = [...MAP.buildings, ...MAP.walls];
+const solids = [...MAP.buildings, ...MAP.walls, ...MAP.blocks];
 
 class Game {
   constructor(opts = {}) {
@@ -571,6 +583,8 @@ class Game {
     this.points = MAP.points.map(p => ({ id: p.id, type: p.type, x: p.x, y: p.y, owner: 0, v: 0 }));
     this.players = [null, this.newPlayer(), this.newPlayer()];
     this.bastionCd = [0, 0, 0];
+    this.hqHp = [0, ECON.hqHp, ECON.hqHp];
+    this.hqAlert = [0, -99, -99];
     this.over = false;
     this.winner = 0;
     this.resetEvents();
@@ -605,6 +619,13 @@ class Game {
         });
         return null;
       }
+      case 'attackhq':
+        for (const s of own(c.ids)) {
+          if (s.retreating) continue;
+          s.order = { type: 'attackhq', repath: 0 };
+          s.pending = null;
+        }
+        return null;
       case 'attack': {
         const t = this.squads.get(c.target);
         if (!t || t.owner === player) return null;
@@ -806,7 +827,7 @@ class Game {
     s.retreating = true;
     s.pending = null;
     s.order = { type: 'retreat' };
-    this.pathModels(s, hq.x + this.forward(s.owner) * 60, hq.y);
+    this.pathModels(s, hq.x + this.forward(s.owner) * 130, hq.y);
   }
 
   isPinned(s) { return s.supp >= PINNED; }
@@ -895,6 +916,19 @@ class Game {
 
     // Order logic.
     const o = s.order;
+    if (o.type === 'attackhq') {
+      // Close in until the enemy fortress is in weapon range, then hold.
+      const range = s.def.melee ? 20 : this.squadRange(s, null) * 0.85;
+      const d = this.hqDist(3 - s.owner, c.x, c.y);
+      o.repath -= DT;
+      if (d > range) {
+        if (o.repath <= 0) {
+          o.repath = 1;
+          const h = MAP.hq[3 - s.owner], k = Math.max(0, (d - range * 0.7) / (d + MAP.hqHalf));
+          this.pathModels(s, c.x + (h.x - c.x) * k, c.y + (h.y - c.y) * k);
+        }
+      } else for (const m of s.models) m.path = [];
+    }
     if (o.type === 'attack') {
       const t = this.squads.get(o.target);
       // Auto-engagements end when the target dies or slips out of sight.
@@ -1117,11 +1151,19 @@ class Game {
       s.target = this.findTarget(s);
     }
     const t = s.target;
-    if (!t || !t.models.length) { s.target = null; return; }
-
     let accMul = 1 + 0.12 * s.vet;
     if (this.isPinned(s)) accMul *= 0.35;
     else if (this.isSuppressed(s)) accMul *= 0.7;
+    // No enemy squad to shoot (or an order to hit the fortress): fire at the enemy HQ if it's in reach.
+    if (!t || !t.models.length || s.order.type === 'attackhq') {
+      if (!t || !t.models.length) s.target = null;
+      for (const m of s.models) {
+        if (m.cd > 0) m.cd -= DT;
+        const wname = s.def.melee && this.hqDist(3 - s.owner, m.x, m.y) <= WEAPONS[s.def.melee].range + 4 ? s.def.melee : this.weaponName(s, m);
+        this.hqShot(s, m, WEAPONS[wname], wname, accMul);
+      }
+      return;
+    }
 
     for (const m of s.models) {
       if (m.cd > 0) m.cd -= DT;
@@ -1148,7 +1190,7 @@ class Game {
       if (d > w.range || !this.lineOfSight(m.x, m.y, victim.x, victim.y) || (t.def.armor && skipArmor)) {
         // The squad's target is out of this soldier's reach: shoot the nearest enemy he can hit.
         const alt = this.modelTarget(s, m, w, skipArmor);
-        if (!alt) continue;
+        if (!alt) { this.hqShot(s, m, w, wname, accMul); continue; }
         tt = alt.t; victim = alt.v;
       }
       m.cd = w.cd * (0.9 + this.rand() * 0.2);
@@ -1319,6 +1361,44 @@ class Game {
     }
   }
 
+  // Distance from (x, y) to the edge of player p's HQ footprint.
+  hqDist(p, x, y) {
+    const b = MAP.blocks[p - 1];
+    const cx = clamp(x, b.x, b.x + b.w), cy = clamp(y, b.y, b.y + b.h);
+    return dist(x, y, cx, cy);
+  }
+
+  hqShot(s, m, w, wname, accMul) {
+    const p = 3 - s.owner;
+    if (m.cd > 0 || this.hqHp[p] <= 0) return;
+    if (w.setup && m.still < w.setup) return;
+    const d = this.hqDist(p, m.x, m.y);
+    if (d > w.range) return;
+    const b = MAP.blocks[p - 1];
+    const tx = clamp(m.x, b.x + 10, b.x + b.w - 10) + (this.rand() - 0.5) * 30, ty = clamp(m.y, b.y + 10, b.y + b.h - 10) + (this.rand() - 0.5) * 30;
+    if (!this.lineOfSight(m.x, m.y, tx, ty)) return;
+    m.cd = w.cd * (0.9 + this.rand() * 0.2);
+    if (!m.moved || s.def.armor) m.face = turnToward(m.face, Math.atan2(ty - m.y, tx - m.x), Math.PI);
+    const hit = this.rand() < Math.min(0.95, w.acc * accMul + 0.25); // a fortress is hard to miss
+    this.shots.push([r1(m.x), r1(m.y), r1(tx), r1(ty), SHOT_KIND[wname] ?? 0, hit ? 1 : 0, s.owner]);
+    if (w.aoe) this.explode(tx, ty, w.aoe, w.dmg * 0.8, w.supp, s.owner, s, 'shell');
+    if (!hit) return;
+    // Anti-armor weapons wreck the fortress; small arms only chip at it.
+    const dmg = w.dmg * (w.pen >= 0.5 ? 1 : 0.3);
+    this.hqHp[p] = Math.max(0, this.hqHp[p] - dmg);
+    s.xp += dmg * 0.5;
+    if (this.time - this.hqAlert[p] > 10) {
+      this.hqAlert[p] = this.time;
+      this.msgs.push({ p, text: 'Your HQ is under attack!', kind: 'lostpt' });
+    }
+    if (this.hqHp[p] <= 0) {
+      this.booms.push([MAP.hq[p].x, MAP.hq[p].y, 160, 0]);
+      this.msgs.push({ p, text: 'Your HQ has been destroyed!', kind: 'lost' });
+      this.msgs.push({ p: 3 - p, text: 'Enemy HQ destroyed!', kind: 'cap' });
+      this.over = true; this.winner = 3 - p; this.endReason = 'hq';
+    }
+  }
+
   victory() {
     if (this.tick % TICK_RATE !== 0) return;
     const vp = [0, 0, 0];
@@ -1329,7 +1409,7 @@ class Game {
     for (const p of [1, 2]) {
       if (this.players[p].tickets <= 0) {
         this.players[p].tickets = 0;
-        this.over = true; this.winner = 3 - p;
+        this.over = true; this.winner = 3 - p; this.endReason = 'tickets';
       }
     }
   }
@@ -1358,6 +1438,7 @@ class Game {
     return {
       t: 's', tick: this.tick, time: Math.floor(this.time),
       pl: [null, pl(1), pl(2)], sq,
+      hq: [0, Math.ceil(this.hqHp[1]), Math.ceil(this.hqHp[2])], end: this.endReason || '',
       pts: this.points.map(p => [p.owner, Math.round(p.v * 100) / 100, p.contested ? 1 : 0]),
       sh: this.shots, bo: this.booms,
       pr: this.projectiles.map(p => { const k = p.t / p.dur; return [r1(p.x0 + (p.x - p.x0) * k), r1(p.y0 + (p.y - p.y0) * k), Math.round(Math.sin(k * Math.PI) * 100) / 100]; }),
@@ -1500,9 +1581,9 @@ class AI {
       if (score < bestScore) { bestScore = score; best = pt; }
     }
     if (!best) {
-      // Everything is ours: hold the victory point closest to the enemy base.
-      const ehq = MAP.hq[3 - this.p];
-      best = g.points.filter(p => p.type === 'vp').sort((a, b) => Math.hypot(a.x - ehq.x, a.y - ehq.y) - Math.hypot(b.x - ehq.x, b.y - ehq.y))[0];
+      // Everything is ours: march on the enemy HQ.
+      if (s.order.type !== 'attackhq') this.cmd({ type: 'attackhq', ids: [s.id] });
+      return;
     }
     if (goal === best && s.order.type !== 'idle') return;
     this.goals.set(s.id, best.id);
@@ -1894,6 +1975,24 @@ const ART = (() => {
     t.fillStyle = 'rgba(110,88,58,0.45)'; t.fillRect(x, y, w, h);
   }
 
+  // Road network in map coordinates: a central lane between the HQs, north and
+  // south lanes past the outer victory points, and a north-south road.
+  function roadPaths(rd, map, main, side) {
+    const W = map.w, H = map.h, cy = H / 2;
+    rd.lineWidth = main;
+    rd.beginPath(); rd.moveTo(0, cy);
+    rd.bezierCurveTo(W * 0.25, cy - 40, W * 0.44, cy + 60, W / 2, cy);
+    rd.bezierCurveTo(W * 0.56, cy - 60, W * 0.75, cy + 40, W, cy); rd.stroke();
+    rd.lineWidth = side;
+    for (const y of [500, H - 500]) {
+      const out = y < cy ? 160 : -160;
+      rd.beginPath(); rd.moveTo(W * 0.14, y + out); rd.quadraticCurveTo(W / 2, y - out * 0.6, W * 0.86, y + out); rd.stroke();
+      // Spurs from the HQ lane out to the side lanes.
+      for (const x of [W * 0.14, W * 0.86]) { rd.beginPath(); rd.moveTo(x, y + out); rd.quadraticCurveTo(x + (x < W / 2 ? -120 : 120), (y + cy) / 2, x < W / 2 ? W * 0.05 : W * 0.95, cy); rd.stroke(); }
+    }
+    rd.beginPath(); rd.moveTo(W / 2, 0); rd.lineTo(W / 2, H); rd.stroke();
+  }
+
   // Fills a region with a tiling image, with `tile` world pixels per repeat.
   function tiled(t, img, tile) {
     const p = t.createPattern(img, 'repeat');
@@ -1920,11 +2019,7 @@ const ART = (() => {
     const roads = document.createElement('canvas'); roads.width = map.w; roads.height = map.h;
     const rd = roads.getContext('2d');
     rd.strokeStyle = '#7a705f'; rd.lineCap = 'round';
-    rd.lineWidth = 58;
-    rd.beginPath(); rd.moveTo(0, 1000); rd.bezierCurveTo(800, 960, 1400, 1060, 1600, 1000); rd.bezierCurveTo(1800, 940, 2400, 1040, 3200, 1000); rd.stroke();
-    rd.lineWidth = 40;
-    for (const y of [350, 1650]) { rd.beginPath(); rd.moveTo(500, y + (y < 1000 ? 120 : -120)); rd.quadraticCurveTo(1600, y - (y < 1000 ? 80 : -80), 2700, y + (y < 1000 ? 120 : -120)); rd.stroke(); }
-    rd.beginPath(); rd.moveTo(1600, 0); rd.lineTo(1600, 2000); rd.stroke();
+    roadPaths(rd, map, 58, 40);
     rd.globalCompositeOperation = 'source-atop';
     for (let y = 0; y < map.h; y += 18) for (let x = (y / 18) % 2 ? 9 : 0; x < map.w; x += 30) {
       const v = 100 + r() * 30;
@@ -1934,10 +2029,10 @@ const ART = (() => {
     t.globalAlpha = 0.8; t.drawImage(roads, 0, 0); t.globalAlpha = 1;
 
     // Marble plaza around the central victory point.
-    t.save(); t.beginPath(); t.arc(1600, 1000, 210, 0, Math.PI * 2); t.clip();
-    marbleFloor(t, 1390, 790, 420, 420, r, 26);
+    t.save(); t.beginPath(); t.arc(map.w / 2, map.h / 2, 210, 0, Math.PI * 2); t.clip();
+    marbleFloor(t, map.w / 2 - 210, map.h / 2 - 210, 420, 420, r, 26);
     t.restore();
-    t.strokeStyle = '#a8873a'; t.lineWidth = 4; t.beginPath(); t.arc(1600, 1000, 210, 0, Math.PI * 2); t.stroke();
+    t.strokeStyle = '#a8873a'; t.lineWidth = 4; t.beginPath(); t.arc(map.w / 2, map.h / 2, 210, 0, Math.PI * 2); t.stroke();
 
     // Grit and stones.
     for (let i = 0; i < 12000; i++) {
@@ -2004,23 +2099,19 @@ const ART = (() => {
     const roads = document.createElement('canvas'); roads.width = map.w; roads.height = map.h;
     const rd = roads.getContext('2d');
     rd.strokeStyle = '#000'; rd.lineCap = 'round';
-    rd.lineWidth = 64;
-    rd.beginPath(); rd.moveTo(0, 1000); rd.bezierCurveTo(800, 960, 1400, 1060, 1600, 1000); rd.bezierCurveTo(1800, 940, 2400, 1040, 3200, 1000); rd.stroke();
-    rd.lineWidth = 44;
-    for (const y of [350, 1650]) { rd.beginPath(); rd.moveTo(500, y + (y < 1000 ? 120 : -120)); rd.quadraticCurveTo(1600, y - (y < 1000 ? 80 : -80), 2700, y + (y < 1000 ? 120 : -120)); rd.stroke(); }
-    rd.beginPath(); rd.moveTo(1600, 0); rd.lineTo(1600, 2000); rd.stroke();
+    roadPaths(rd, map, 64, 44);
     rd.globalCompositeOperation = 'source-in';
     rd.fillStyle = tiled(rd, IMG.marble, 200); rd.fillRect(0, 0, map.w, map.h);
     rd.fillStyle = 'rgba(90,70,40,0.45)'; rd.fillRect(0, 0, map.w, map.h);
     t.globalAlpha = 0.85; t.drawImage(roads, 0, 0); t.globalAlpha = 1;
     // Marble plaza around the central victory point.
-    t.save(); t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.clip();
-    t.fillStyle = tiled(t, IMG.marble, 130); t.fillRect(1380, 780, 440, 440);
-    const pg = t.createRadialGradient(1600, 1000, 120, 1600, 1000, 215);
+    t.save(); t.beginPath(); t.arc(map.w / 2, map.h / 2, 215, 0, Math.PI * 2); t.clip();
+    t.fillStyle = tiled(t, IMG.marble, 130); t.fillRect(map.w / 2 - 220, map.h / 2 - 220, 440, 440);
+    const pg = t.createRadialGradient(map.w / 2, map.h / 2, 120, map.w / 2, map.h / 2, 215);
     pg.addColorStop(0, 'rgba(70,52,28,0.35)'); pg.addColorStop(1, 'rgba(50,38,20,0.7)');
-    t.fillStyle = pg; t.fillRect(1380, 780, 440, 440);
+    t.fillStyle = pg; t.fillRect(map.w / 2 - 220, map.h / 2 - 220, 440, 440);
     t.restore();
-    t.strokeStyle = '#a8873a'; t.lineWidth = 5; t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.stroke();
+    t.strokeStyle = '#a8873a'; t.lineWidth = 5; t.beginPath(); t.arc(map.w / 2, map.h / 2, 215, 0, Math.PI * 2); t.stroke();
     // Craters.
     for (const cr of map.craters) {
       if (IMG.crater) { const s = cr.r * 3.1; t.drawImage(IMG.crater, cr.x - s / 2, cr.y - s / 2, s, s); }
@@ -2287,9 +2378,17 @@ function onSnapshot(s) {
   for (const [id, m] of G.lastModels) if (!seen.has(id)) addCorpse(m);
   G.lastModels = seen;
   for (const id of [...G.sel]) if (!s.sq.some(q => q.id === id)) G.sel.delete(id);
+  // A badly damaged fortress smokes.
+  for (const p of [1, 2]) {
+    if (s.hq && s.hq[p] < G.econ.hqHp * 0.6 && Math.random() < 0.25) {
+      const h = G.map.hq[p];
+      G.effects.push({ type: 'smoke', x: h.x + (Math.random() - 0.5) * 120, y: h.y + (Math.random() - 0.5) * 120, vx: 6, vy: -14, r: 22, t: 0, life: 2.4 });
+    }
+  }
   if (s.over && !G.over) {
     const won = s.win === G.you;
-    endGame(won ? 'Victory' : 'Defeat', won ? 'The enemy has run out of tickets.' : 'Your forces have been broken.');
+    if (s.end === 'hq') endGame(won ? 'Victory' : 'Defeat', won ? 'The enemy HQ lies in ruins.' : 'Your HQ has been destroyed.');
+    else endGame(won ? 'Victory' : 'Defeat', won ? 'The enemy has run out of tickets.' : 'Your forces have been broken.');
   }
 }
 
@@ -2567,6 +2666,7 @@ function drawHQs(snap) {
   for (const p of [1, 2]) {
     const h = G.map.hq[p];
     ART.drawSprite(ctx, ART.fortress(G.schemes[p]), h.x, h.y, 0, 1);
+    if (snap.hq) drawHqBar(ctx, h.x, h.y - 112, snap.hq[p], p, 1 / Math.max(G.cam.z, 0.7));
     ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(h.x, h.y, 300, 0, Math.PI * 2); ctx.stroke();
   }
@@ -2584,6 +2684,15 @@ function drawHQs(snap) {
     }
     drawRallyFlag(x, y);
   }
+}
+
+function drawHqBar(c, x, y, hp, p, scale) {
+  const max = G.econ.hqHp, w = 110 * scale, h = 8 * scale;
+  c.fillStyle = '#000'; c.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
+  c.fillStyle = '#3a1010'; c.fillRect(x - w / 2, y, w, h);
+  c.fillStyle = p === G.you ? '#6c6' : '#e65'; c.fillRect(x - w / 2, y, w * Math.max(0, hp) / max, h);
+  c.fillStyle = '#fff'; c.font = `bold ${Math.round(10 * scale)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'bottom';
+  c.fillText(`HQ ${Math.ceil(hp)}`, x, y - 2);
 }
 
 function drawRallyFlag(x, y) {
@@ -3080,7 +3189,12 @@ function issueOrder(w, amove) {
   const ids = [...G.sel];
   if (!ids.length) return;
   const target = !amove && pickSquad(w.x, w.y);
-  if (target && target.o !== G.you) {
+  const eh = G.map.hq[3 - G.you];
+  if (!target && !amove && Math.abs(w.x - eh.x) < 85 && Math.abs(w.y - eh.y) < 85) {
+    send({ t: 'cmd', c: { type: 'attackhq', ids } });
+    G.marker = { x: w.x, y: w.y, t: 0, color: '#ff5a4a' };
+    toast('Attacking the enemy HQ');
+  } else if (target && target.o !== G.you) {
     send({ t: 'cmd', c: { type: 'attack', ids, target: target.id } });
     G.marker = { x: w.x, y: w.y, t: 0, color: '#ff5a4a' };
   } else {
@@ -3259,7 +3373,7 @@ const R3D = (() => {
     glCanvas.style.display = 'block';
     scene = new T.Scene();
     scene.background = new T.Color('#3a3226');
-    scene.fog = new T.Fog('#5a4a36', 1400, 3200);
+    scene.fog = new T.Fog('#5a4a36', 1600, 4200);
     camera = new T.PerspectiveCamera(FOV, 1, 10, 8000);
 
     scene.add(new T.HemisphereLight('#ffe2b8', '#3b2f22', 0.75));
@@ -3286,7 +3400,7 @@ const R3D = (() => {
     buildPoints(map);
 
     // Fog of war: a low-resolution shroud just above the ground.
-    fogCanvas = document.createElement('canvas'); fogCanvas.width = 320; fogCanvas.height = 200;
+    fogCanvas = document.createElement('canvas'); fogCanvas.width = Math.round(map.w / 10); fogCanvas.height = Math.round(map.h / 10);
     fogTex = new T.CanvasTexture(fogCanvas);
     fogPlane = new T.Mesh(new T.PlaneGeometry(map.w, map.h), new T.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false }));
     fogPlane.rotation.x = -Math.PI / 2; fogPlane.position.set(map.w / 2, 1.5, map.h / 2);
@@ -3789,6 +3903,11 @@ const R3D = (() => {
           ctx.beginPath(); ctx.moveTo(q.x - 4, q.y - 5); ctx.lineTo(q.x + 4, q.y - 5); ctx.lineTo(q.x + 4, q.y); ctx.lineTo(q.x, q.y + 4); ctx.lineTo(q.x - 4, q.y); ctx.closePath(); ctx.fill();
         }
       }
+    }
+    // Fortress health.
+    if (v.snap.hq) for (const p of [1, 2]) {
+      const h = G.map.hq[p], q = project(h.x, h.y, 125);
+      if (!q.behind) drawHqBar(ctx, q.x, q.y, v.snap.hq[p], p, 1);
     }
     // Ability range and blast preview.
     const circle = (x, y, r, stroke, fill, dash) => {

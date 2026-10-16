@@ -299,6 +299,24 @@ const ART = (() => {
     t.fillStyle = 'rgba(110,88,58,0.45)'; t.fillRect(x, y, w, h);
   }
 
+  // Road network in map coordinates: a central lane between the HQs, north and
+  // south lanes past the outer victory points, and a north-south road.
+  function roadPaths(rd, map, main, side) {
+    const W = map.w, H = map.h, cy = H / 2;
+    rd.lineWidth = main;
+    rd.beginPath(); rd.moveTo(0, cy);
+    rd.bezierCurveTo(W * 0.25, cy - 40, W * 0.44, cy + 60, W / 2, cy);
+    rd.bezierCurveTo(W * 0.56, cy - 60, W * 0.75, cy + 40, W, cy); rd.stroke();
+    rd.lineWidth = side;
+    for (const y of [500, H - 500]) {
+      const out = y < cy ? 160 : -160;
+      rd.beginPath(); rd.moveTo(W * 0.14, y + out); rd.quadraticCurveTo(W / 2, y - out * 0.6, W * 0.86, y + out); rd.stroke();
+      // Spurs from the HQ lane out to the side lanes.
+      for (const x of [W * 0.14, W * 0.86]) { rd.beginPath(); rd.moveTo(x, y + out); rd.quadraticCurveTo(x + (x < W / 2 ? -120 : 120), (y + cy) / 2, x < W / 2 ? W * 0.05 : W * 0.95, cy); rd.stroke(); }
+    }
+    rd.beginPath(); rd.moveTo(W / 2, 0); rd.lineTo(W / 2, H); rd.stroke();
+  }
+
   // Fills a region with a tiling image, with `tile` world pixels per repeat.
   function tiled(t, img, tile) {
     const p = t.createPattern(img, 'repeat');
@@ -325,11 +343,7 @@ const ART = (() => {
     const roads = document.createElement('canvas'); roads.width = map.w; roads.height = map.h;
     const rd = roads.getContext('2d');
     rd.strokeStyle = '#7a705f'; rd.lineCap = 'round';
-    rd.lineWidth = 58;
-    rd.beginPath(); rd.moveTo(0, 1000); rd.bezierCurveTo(800, 960, 1400, 1060, 1600, 1000); rd.bezierCurveTo(1800, 940, 2400, 1040, 3200, 1000); rd.stroke();
-    rd.lineWidth = 40;
-    for (const y of [350, 1650]) { rd.beginPath(); rd.moveTo(500, y + (y < 1000 ? 120 : -120)); rd.quadraticCurveTo(1600, y - (y < 1000 ? 80 : -80), 2700, y + (y < 1000 ? 120 : -120)); rd.stroke(); }
-    rd.beginPath(); rd.moveTo(1600, 0); rd.lineTo(1600, 2000); rd.stroke();
+    roadPaths(rd, map, 58, 40);
     rd.globalCompositeOperation = 'source-atop';
     for (let y = 0; y < map.h; y += 18) for (let x = (y / 18) % 2 ? 9 : 0; x < map.w; x += 30) {
       const v = 100 + r() * 30;
@@ -339,10 +353,10 @@ const ART = (() => {
     t.globalAlpha = 0.8; t.drawImage(roads, 0, 0); t.globalAlpha = 1;
 
     // Marble plaza around the central victory point.
-    t.save(); t.beginPath(); t.arc(1600, 1000, 210, 0, Math.PI * 2); t.clip();
-    marbleFloor(t, 1390, 790, 420, 420, r, 26);
+    t.save(); t.beginPath(); t.arc(map.w / 2, map.h / 2, 210, 0, Math.PI * 2); t.clip();
+    marbleFloor(t, map.w / 2 - 210, map.h / 2 - 210, 420, 420, r, 26);
     t.restore();
-    t.strokeStyle = '#a8873a'; t.lineWidth = 4; t.beginPath(); t.arc(1600, 1000, 210, 0, Math.PI * 2); t.stroke();
+    t.strokeStyle = '#a8873a'; t.lineWidth = 4; t.beginPath(); t.arc(map.w / 2, map.h / 2, 210, 0, Math.PI * 2); t.stroke();
 
     // Grit and stones.
     for (let i = 0; i < 12000; i++) {
@@ -409,23 +423,19 @@ const ART = (() => {
     const roads = document.createElement('canvas'); roads.width = map.w; roads.height = map.h;
     const rd = roads.getContext('2d');
     rd.strokeStyle = '#000'; rd.lineCap = 'round';
-    rd.lineWidth = 64;
-    rd.beginPath(); rd.moveTo(0, 1000); rd.bezierCurveTo(800, 960, 1400, 1060, 1600, 1000); rd.bezierCurveTo(1800, 940, 2400, 1040, 3200, 1000); rd.stroke();
-    rd.lineWidth = 44;
-    for (const y of [350, 1650]) { rd.beginPath(); rd.moveTo(500, y + (y < 1000 ? 120 : -120)); rd.quadraticCurveTo(1600, y - (y < 1000 ? 80 : -80), 2700, y + (y < 1000 ? 120 : -120)); rd.stroke(); }
-    rd.beginPath(); rd.moveTo(1600, 0); rd.lineTo(1600, 2000); rd.stroke();
+    roadPaths(rd, map, 64, 44);
     rd.globalCompositeOperation = 'source-in';
     rd.fillStyle = tiled(rd, IMG.marble, 200); rd.fillRect(0, 0, map.w, map.h);
     rd.fillStyle = 'rgba(90,70,40,0.45)'; rd.fillRect(0, 0, map.w, map.h);
     t.globalAlpha = 0.85; t.drawImage(roads, 0, 0); t.globalAlpha = 1;
     // Marble plaza around the central victory point.
-    t.save(); t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.clip();
-    t.fillStyle = tiled(t, IMG.marble, 130); t.fillRect(1380, 780, 440, 440);
-    const pg = t.createRadialGradient(1600, 1000, 120, 1600, 1000, 215);
+    t.save(); t.beginPath(); t.arc(map.w / 2, map.h / 2, 215, 0, Math.PI * 2); t.clip();
+    t.fillStyle = tiled(t, IMG.marble, 130); t.fillRect(map.w / 2 - 220, map.h / 2 - 220, 440, 440);
+    const pg = t.createRadialGradient(map.w / 2, map.h / 2, 120, map.w / 2, map.h / 2, 215);
     pg.addColorStop(0, 'rgba(70,52,28,0.35)'); pg.addColorStop(1, 'rgba(50,38,20,0.7)');
-    t.fillStyle = pg; t.fillRect(1380, 780, 440, 440);
+    t.fillStyle = pg; t.fillRect(map.w / 2 - 220, map.h / 2 - 220, 440, 440);
     t.restore();
-    t.strokeStyle = '#a8873a'; t.lineWidth = 5; t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.stroke();
+    t.strokeStyle = '#a8873a'; t.lineWidth = 5; t.beginPath(); t.arc(map.w / 2, map.h / 2, 215, 0, Math.PI * 2); t.stroke();
     // Craters.
     for (const cr of map.craters) {
       if (IMG.crater) { const s = cr.r * 3.1; t.drawImage(IMG.crater, cr.x - s / 2, cr.y - s / 2, s, s); }

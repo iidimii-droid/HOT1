@@ -39,7 +39,7 @@ function waitFor(ws, pred, ms = 4000) {
   const mine = snap.sq.find(s => s.o === 1), theirs = snap.sq.find(s => s.o === 2);
   // Player 2 must not be able to command player 1's squad.
   b.send(JSON.stringify({ t: 'cmd', c: { type: 'retreat', ids: [mine.id] } }));
-  a.send(JSON.stringify({ t: 'cmd', c: { type: 'move', ids: [mine.id], x: 700, y: 470 } }));
+  a.send(JSON.stringify({ t: 'cmd', c: { type: 'move', ids: [mine.id], x: 800, y: 1300 } }));
   a.send(JSON.stringify({ t: 'cmd', c: { type: 'build', unit: 'heavy' } }));
   a.send(JSON.stringify({ t: 'cmd', c: { type: 'build', unit: 'tank' } }));
   const err = await waitFor(a, m => m.t === 'err');

@@ -171,9 +171,17 @@ function onSnapshot(s) {
   for (const [id, m] of G.lastModels) if (!seen.has(id)) addCorpse(m);
   G.lastModels = seen;
   for (const id of [...G.sel]) if (!s.sq.some(q => q.id === id)) G.sel.delete(id);
+  // A badly damaged fortress smokes.
+  for (const p of [1, 2]) {
+    if (s.hq && s.hq[p] < G.econ.hqHp * 0.6 && Math.random() < 0.25) {
+      const h = G.map.hq[p];
+      G.effects.push({ type: 'smoke', x: h.x + (Math.random() - 0.5) * 120, y: h.y + (Math.random() - 0.5) * 120, vx: 6, vy: -14, r: 22, t: 0, life: 2.4 });
+    }
+  }
   if (s.over && !G.over) {
     const won = s.win === G.you;
-    endGame(won ? 'Victory' : 'Defeat', won ? 'The enemy has run out of tickets.' : 'Your forces have been broken.');
+    if (s.end === 'hq') endGame(won ? 'Victory' : 'Defeat', won ? 'The enemy HQ lies in ruins.' : 'Your HQ has been destroyed.');
+    else endGame(won ? 'Victory' : 'Defeat', won ? 'The enemy has run out of tickets.' : 'Your forces have been broken.');
   }
 }
 
@@ -451,6 +459,7 @@ function drawHQs(snap) {
   for (const p of [1, 2]) {
     const h = G.map.hq[p];
     ART.drawSprite(ctx, ART.fortress(G.schemes[p]), h.x, h.y, 0, 1);
+    if (snap.hq) drawHqBar(ctx, h.x, h.y - 112, snap.hq[p], p, 1 / Math.max(G.cam.z, 0.7));
     ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(h.x, h.y, 300, 0, Math.PI * 2); ctx.stroke();
   }
@@ -468,6 +477,15 @@ function drawHQs(snap) {
     }
     drawRallyFlag(x, y);
   }
+}
+
+function drawHqBar(c, x, y, hp, p, scale) {
+  const max = G.econ.hqHp, w = 110 * scale, h = 8 * scale;
+  c.fillStyle = '#000'; c.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
+  c.fillStyle = '#3a1010'; c.fillRect(x - w / 2, y, w, h);
+  c.fillStyle = p === G.you ? '#6c6' : '#e65'; c.fillRect(x - w / 2, y, w * Math.max(0, hp) / max, h);
+  c.fillStyle = '#fff'; c.font = `bold ${Math.round(10 * scale)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'bottom';
+  c.fillText(`HQ ${Math.ceil(hp)}`, x, y - 2);
 }
 
 function drawRallyFlag(x, y) {
@@ -964,7 +982,12 @@ function issueOrder(w, amove) {
   const ids = [...G.sel];
   if (!ids.length) return;
   const target = !amove && pickSquad(w.x, w.y);
-  if (target && target.o !== G.you) {
+  const eh = G.map.hq[3 - G.you];
+  if (!target && !amove && Math.abs(w.x - eh.x) < 85 && Math.abs(w.y - eh.y) < 85) {
+    send({ t: 'cmd', c: { type: 'attackhq', ids } });
+    G.marker = { x: w.x, y: w.y, t: 0, color: '#ff5a4a' };
+    toast('Attacking the enemy HQ');
+  } else if (target && target.o !== G.you) {
     send({ t: 'cmd', c: { type: 'attack', ids, target: target.id } });
     G.marker = { x: w.x, y: w.y, t: 0, color: '#ff5a4a' };
   } else {

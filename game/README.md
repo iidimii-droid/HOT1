@@ -31,6 +31,7 @@ check at `/health`.
 | Mechanic | How it works |
 |---|---|
 | **Victory** | Each side starts with 500 tickets. Hold more of the 3 victory points (stars) than the enemy to drain their tickets each second. |
+| **HQ assault** | Each HQ has 3,000 health. Right-click the enemy HQ to attack it; units with nothing else to shoot also fire at it. Anti-armor weapons do full damage, small arms 30%. Destroying it wins the game. |
 | **Economy** | Requisition (R) and power (P) come in over time. Capturing R and P points raises your income. |
 | **Squads** | Units are squads of models. Losses are refilled with **Reinforce (T)** near your HQ. |
 | **Cover** | Sandbags, walls and ruin edges give heavy cover (green shield): half accuracy and less damage taken. Craters give light cover (yellow). Cover only protects from the side it faces. |
@@ -38,7 +39,7 @@ check at `/health`.
 | **Retreat (R)** | The squad runs to HQ, takes half damage on the way, and heals at base. |
 | **Veterancy** | Squads that deal damage earn up to 3 stars, which raise accuracy and toughness. |
 | **Line of sight** | Ruined buildings block movement, shots and sight. The fog of war hides enemies outside your squads' vision. |
-| **HQ bastion** | Each HQ has a defensive gun, so a base can't be camped. |
+| **HQ bastion** | Each HQ has a defensive gun (range 380), so a base can't be camped or outranged by rifles. |
 
 ### Units
 

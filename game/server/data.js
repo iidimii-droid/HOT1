@@ -2,7 +2,7 @@
 // Static game data: unit definitions and the map. Sent to clients on game start.
 
 const TICK_RATE = 20;
-const WORLD = { w: 3200, h: 2000 };
+const WORLD = { w: 4400, h: 2800 };
 
 // Weapon fields: range (px), dmg, cd (seconds between shots), acc (0..1),
 // pen (damage multiplier against armored targets), supp (suppression per hit),
@@ -15,7 +15,7 @@ const WEAPONS = {
   lance:   { range: 380, dmg: 120,cd: 5.0,  acc: 0.75, pen: 1.0,  supp: 2, setup: 1.5, infAcc: 0.3, infDmg: 40 },
   cannon:  { range: 330, dmg: 55, cd: 3.5,  acc: 0.65, pen: 0.8,  supp: 25, aoe: 45 },
   coax:    { range: 260, dmg: 5,  cd: 0.3,  acc: 0.45, pen: 0.02, supp: 1.2 },
-  bastion: { range: 320, dmg: 16, cd: 0.5,  acc: 0.6,  pen: 0.15, supp: 3 },
+  bastion: { range: 380, dmg: 16, cd: 0.5,  acc: 0.6,  pen: 0.15, supp: 3 },
 };
 
 // Squad definitions. `weapons` lists the weapon carried by each model slot;
@@ -52,11 +52,12 @@ const ECON = {
   startReq: 400, startPow: 40,
   baseReq: 4, basePow: 0.6,           // per second
   reqPoint: 1.6, powPoint: 1.0,        // per owned point per second
-  popCap: 50, tickets: 500,
+  popCap: 50, tickets: 500, hqHp: 3000,
 };
 
 // ---- Map ----------------------------------------------------------------
-// The left half is authored by hand and mirrored for player 2.
+// The left half is authored by hand and mirrored for player 2; `center` items
+// sit on the middle line and are not mirrored.
 function mirrorRect(r) { return { ...r, x: WORLD.w - r.x - r.w }; }
 function mirrorCircle(c) { return { ...c, x: WORLD.w - c.x }; }
 
@@ -64,39 +65,50 @@ function buildMap() {
   const left = {
     // Ruined buildings: block movement and line of sight, heavy cover beside them.
     buildings: [
-      { x: 380, y: 230, w: 170, h: 110 }, { x: 380, y: 1660, w: 170, h: 110 },
-      { x: 960, y: 610, w: 120, h: 170 }, { x: 960, y: 1220, w: 120, h: 170 },
-      { x: 1300, y: 90, w: 130, h: 120 }, { x: 1300, y: 1790, w: 130, h: 120 },
+      { x: 500, y: 300, w: 190, h: 125 }, { x: 500, y: 2375, w: 190, h: 125 },
+      { x: 1300, y: 830, w: 130, h: 190 }, { x: 1300, y: 1780, w: 130, h: 190 },
+      { x: 1780, y: 120, w: 150, h: 130 }, { x: 1780, y: 2550, w: 150, h: 130 },
+      { x: 960, y: 1130, w: 120, h: 120 }, { x: 960, y: 1550, w: 120, h: 120 },
     ],
     // Sandbags and low walls: block movement, heavy cover, do not block sight.
     walls: [
-      { x: 1490, y: 300, w: 16, h: 100 }, { x: 1490, y: 950, w: 16, h: 100 }, { x: 1490, y: 1600, w: 16, h: 100 },
-      { x: 1210, y: 930, w: 16, h: 140 }, { x: 820, y: 330, w: 170, h: 16 }, { x: 820, y: 1654, w: 170, h: 16 },
-      { x: 640, y: 940, w: 16, h: 120 }, { x: 1140, y: 470, w: 120, h: 16 }, { x: 1140, y: 1514, w: 120, h: 16 },
+      { x: 2060, y: 440, w: 16, h: 120 }, { x: 2060, y: 1340, w: 16, h: 120 }, { x: 2060, y: 2240, w: 16, h: 120 },
+      { x: 1350, y: 1330, w: 16, h: 140 }, { x: 520, y: 760, w: 170, h: 16 }, { x: 520, y: 2024, w: 170, h: 16 },
+      { x: 860, y: 1360, w: 16, h: 80 }, { x: 1600, y: 620, w: 140, h: 16 }, { x: 1600, y: 2164, w: 140, h: 16 },
+      { x: 1740, y: 1230, w: 16, h: 110 }, { x: 1740, y: 1460, w: 16, h: 110 },
+      { x: 1340, y: 500, w: 130, h: 16 }, { x: 1340, y: 2284, w: 130, h: 16 },
     ],
     // Craters: light cover, no blocking.
     craters: [
-      { x: 560, y: 760, r: 34 }, { x: 560, y: 1240, r: 34 }, { x: 860, y: 1000, r: 40 },
-      { x: 1080, y: 360, r: 30 }, { x: 1080, y: 1640, r: 30 }, { x: 1380, y: 700, r: 36 },
-      { x: 1380, y: 1300, r: 36 }, { x: 1250, y: 1120, r: 28 }, { x: 760, y: 620, r: 28 },
-      { x: 760, y: 1380, r: 28 }, { x: 1420, y: 480, r: 26 }, { x: 1420, y: 1520, r: 26 },
+      { x: 820, y: 560, r: 34 }, { x: 820, y: 2240, r: 34 }, { x: 760, y: 1400, r: 42 },
+      { x: 1150, y: 640, r: 30 }, { x: 1150, y: 2160, r: 30 }, { x: 1560, y: 1100, r: 38 },
+      { x: 1560, y: 1700, r: 38 }, { x: 1180, y: 1400, r: 30 }, { x: 1900, y: 820, r: 32 },
+      { x: 1900, y: 1980, r: 32 }, { x: 1950, y: 1400, r: 28 }, { x: 600, y: 1050, r: 28 },
+      { x: 600, y: 1750, r: 28 }, { x: 1700, y: 380, r: 26 }, { x: 1700, y: 2420, r: 26 },
     ],
     points: [
-      { type: 'req', x: 700, y: 470 }, { type: 'pow', x: 700, y: 1530 }, { type: 'req', x: 1120, y: 1000 },
+      { type: 'req', x: 650, y: 650 }, { type: 'pow', x: 650, y: 2150 }, { type: 'req', x: 1250, y: 1400 },
+      { type: 'pow', x: 1500, y: 380 }, { type: 'req', x: 1500, y: 2420 },
     ],
   };
+  const center = {
+    buildings: [{ x: 2130, y: 880, w: 140, h: 110 }, { x: 2130, y: 1810, w: 140, h: 110 }],
+    craters: [{ x: 2200, y: 1100, r: 30 }, { x: 2200, y: 1700, r: 30 }],
+  };
+  const hq = [null, { x: 220, y: WORLD.h / 2 }, { x: WORLD.w - 220, y: WORLD.h / 2 }];
   const map = {
-    w: WORLD.w, h: WORLD.h,
-    hq: [null, { x: 170, y: 1000 }, { x: WORLD.w - 170, y: 1000 }],
+    w: WORLD.w, h: WORLD.h, hq,
     captureRadius: 100,
-    buildings: [...left.buildings, ...left.buildings.map(mirrorRect)],
+    hqHalf: 70, // HQ fortress footprint: blocks movement and can be attacked
+    buildings: [...left.buildings, ...left.buildings.map(mirrorRect), ...center.buildings],
     walls: [...left.walls, ...left.walls.map(mirrorRect)],
-    craters: [...left.craters, ...left.craters.map(mirrorCircle)],
+    blocks: [1, 2].map(p => ({ x: hq[p].x - 70, y: hq[p].y - 70, w: 140, h: 140 })),
+    craters: [...left.craters, ...left.craters.map(mirrorCircle), ...center.craters],
     points: [],
   };
   // Mirrored point pairs, then the three victory points in the middle.
   left.points.forEach(p => { map.points.push({ ...p }); map.points.push(mirrorCircle(p)); });
-  map.points.push({ type: 'vp', x: 1600, y: 350 }, { type: 'vp', x: 1600, y: 1000 }, { type: 'vp', x: 1600, y: 1650 });
+  map.points.push({ type: 'vp', x: WORLD.w / 2, y: 500 }, { type: 'vp', x: WORLD.w / 2, y: WORLD.h / 2 }, { type: 'vp', x: WORLD.w / 2, y: WORLD.h - 500 });
   map.points.forEach((p, i) => { p.id = i; });
   return map;
 }

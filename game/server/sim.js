@@ -18,7 +18,7 @@ const SHOT_KIND = { rifle: 0, pistol: 1, repeater: 2, lance: 3, cannon: 4, coax:
 
 const infGrid = new Grid(MAP, INF_RADIUS + 2);
 const tankGrid = new Grid(MAP, 22);
-const solids = [...MAP.buildings, ...MAP.walls];
+const solids = [...MAP.buildings, ...MAP.walls, ...MAP.blocks];
 
 class Game {
   constructor(opts = {}) {
@@ -31,6 +31,8 @@ class Game {
     this.points = MAP.points.map(p => ({ id: p.id, type: p.type, x: p.x, y: p.y, owner: 0, v: 0 }));
     this.players = [null, this.newPlayer(), this.newPlayer()];
     this.bastionCd = [0, 0, 0];
+    this.hqHp = [0, ECON.hqHp, ECON.hqHp];
+    this.hqAlert = [0, -99, -99];
     this.over = false;
     this.winner = 0;
     this.resetEvents();
@@ -65,6 +67,13 @@ class Game {
         });
         return null;
       }
+      case 'attackhq':
+        for (const s of own(c.ids)) {
+          if (s.retreating) continue;
+          s.order = { type: 'attackhq', repath: 0 };
+          s.pending = null;
+        }
+        return null;
       case 'attack': {
         const t = this.squads.get(c.target);
         if (!t || t.owner === player) return null;
@@ -266,7 +275,7 @@ class Game {
     s.retreating = true;
     s.pending = null;
     s.order = { type: 'retreat' };
-    this.pathModels(s, hq.x + this.forward(s.owner) * 60, hq.y);
+    this.pathModels(s, hq.x + this.forward(s.owner) * 130, hq.y);
   }
 
   isPinned(s) { return s.supp >= PINNED; }
@@ -355,6 +364,19 @@ class Game {
 
     // Order logic.
     const o = s.order;
+    if (o.type === 'attackhq') {
+      // Close in until the enemy fortress is in weapon range, then hold.
+      const range = s.def.melee ? 20 : this.squadRange(s, null) * 0.85;
+      const d = this.hqDist(3 - s.owner, c.x, c.y);
+      o.repath -= DT;
+      if (d > range) {
+        if (o.repath <= 0) {
+          o.repath = 1;
+          const h = MAP.hq[3 - s.owner], k = Math.max(0, (d - range * 0.7) / (d + MAP.hqHalf));
+          this.pathModels(s, c.x + (h.x - c.x) * k, c.y + (h.y - c.y) * k);
+        }
+      } else for (const m of s.models) m.path = [];
+    }
     if (o.type === 'attack') {
       const t = this.squads.get(o.target);
       // Auto-engagements end when the target dies or slips out of sight.
@@ -577,11 +599,19 @@ class Game {
       s.target = this.findTarget(s);
     }
     const t = s.target;
-    if (!t || !t.models.length) { s.target = null; return; }
-
     let accMul = 1 + 0.12 * s.vet;
     if (this.isPinned(s)) accMul *= 0.35;
     else if (this.isSuppressed(s)) accMul *= 0.7;
+    // No enemy squad to shoot (or an order to hit the fortress): fire at the enemy HQ if it's in reach.
+    if (!t || !t.models.length || s.order.type === 'attackhq') {
+      if (!t || !t.models.length) s.target = null;
+      for (const m of s.models) {
+        if (m.cd > 0) m.cd -= DT;
+        const wname = s.def.melee && this.hqDist(3 - s.owner, m.x, m.y) <= WEAPONS[s.def.melee].range + 4 ? s.def.melee : this.weaponName(s, m);
+        this.hqShot(s, m, WEAPONS[wname], wname, accMul);
+      }
+      return;
+    }
 
     for (const m of s.models) {
       if (m.cd > 0) m.cd -= DT;
@@ -608,7 +638,7 @@ class Game {
       if (d > w.range || !this.lineOfSight(m.x, m.y, victim.x, victim.y) || (t.def.armor && skipArmor)) {
         // The squad's target is out of this soldier's reach: shoot the nearest enemy he can hit.
         const alt = this.modelTarget(s, m, w, skipArmor);
-        if (!alt) continue;
+        if (!alt) { this.hqShot(s, m, w, wname, accMul); continue; }
         tt = alt.t; victim = alt.v;
       }
       m.cd = w.cd * (0.9 + this.rand() * 0.2);
@@ -779,6 +809,44 @@ class Game {
     }
   }
 
+  // Distance from (x, y) to the edge of player p's HQ footprint.
+  hqDist(p, x, y) {
+    const b = MAP.blocks[p - 1];
+    const cx = clamp(x, b.x, b.x + b.w), cy = clamp(y, b.y, b.y + b.h);
+    return dist(x, y, cx, cy);
+  }
+
+  hqShot(s, m, w, wname, accMul) {
+    const p = 3 - s.owner;
+    if (m.cd > 0 || this.hqHp[p] <= 0) return;
+    if (w.setup && m.still < w.setup) return;
+    const d = this.hqDist(p, m.x, m.y);
+    if (d > w.range) return;
+    const b = MAP.blocks[p - 1];
+    const tx = clamp(m.x, b.x + 10, b.x + b.w - 10) + (this.rand() - 0.5) * 30, ty = clamp(m.y, b.y + 10, b.y + b.h - 10) + (this.rand() - 0.5) * 30;
+    if (!this.lineOfSight(m.x, m.y, tx, ty)) return;
+    m.cd = w.cd * (0.9 + this.rand() * 0.2);
+    if (!m.moved || s.def.armor) m.face = turnToward(m.face, Math.atan2(ty - m.y, tx - m.x), Math.PI);
+    const hit = this.rand() < Math.min(0.95, w.acc * accMul + 0.25); // a fortress is hard to miss
+    this.shots.push([r1(m.x), r1(m.y), r1(tx), r1(ty), SHOT_KIND[wname] ?? 0, hit ? 1 : 0, s.owner]);
+    if (w.aoe) this.explode(tx, ty, w.aoe, w.dmg * 0.8, w.supp, s.owner, s, 'shell');
+    if (!hit) return;
+    // Anti-armor weapons wreck the fortress; small arms only chip at it.
+    const dmg = w.dmg * (w.pen >= 0.5 ? 1 : 0.3);
+    this.hqHp[p] = Math.max(0, this.hqHp[p] - dmg);
+    s.xp += dmg * 0.5;
+    if (this.time - this.hqAlert[p] > 10) {
+      this.hqAlert[p] = this.time;
+      this.msgs.push({ p, text: 'Your HQ is under attack!', kind: 'lostpt' });
+    }
+    if (this.hqHp[p] <= 0) {
+      this.booms.push([MAP.hq[p].x, MAP.hq[p].y, 160, 0]);
+      this.msgs.push({ p, text: 'Your HQ has been destroyed!', kind: 'lost' });
+      this.msgs.push({ p: 3 - p, text: 'Enemy HQ destroyed!', kind: 'cap' });
+      this.over = true; this.winner = 3 - p; this.endReason = 'hq';
+    }
+  }
+
   victory() {
     if (this.tick % TICK_RATE !== 0) return;
     const vp = [0, 0, 0];
@@ -789,7 +857,7 @@ class Game {
     for (const p of [1, 2]) {
       if (this.players[p].tickets <= 0) {
         this.players[p].tickets = 0;
-        this.over = true; this.winner = 3 - p;
+        this.over = true; this.winner = 3 - p; this.endReason = 'tickets';
       }
     }
   }
@@ -818,6 +886,7 @@ class Game {
     return {
       t: 's', tick: this.tick, time: Math.floor(this.time),
       pl: [null, pl(1), pl(2)], sq,
+      hq: [0, Math.ceil(this.hqHp[1]), Math.ceil(this.hqHp[2])], end: this.endReason || '',
       pts: this.points.map(p => [p.owner, Math.round(p.v * 100) / 100, p.contested ? 1 : 0]),
       sh: this.shots, bo: this.booms,
       pr: this.projectiles.map(p => { const k = p.t / p.dur; return [r1(p.x0 + (p.x - p.x0) * k), r1(p.y0 + (p.y - p.y0) * k), Math.round(Math.sin(k * Math.PI) * 100) / 100]; }),

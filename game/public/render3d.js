@@ -72,7 +72,7 @@ const R3D = (() => {
     glCanvas.style.display = 'block';
     scene = new T.Scene();
     scene.background = new T.Color('#3a3226');
-    scene.fog = new T.Fog('#5a4a36', 1400, 3200);
+    scene.fog = new T.Fog('#5a4a36', 1600, 4200);
     camera = new T.PerspectiveCamera(FOV, 1, 10, 8000);
 
     scene.add(new T.HemisphereLight('#ffe2b8', '#3b2f22', 0.75));
@@ -99,7 +99,7 @@ const R3D = (() => {
     buildPoints(map);
 
     // Fog of war: a low-resolution shroud just above the ground.
-    fogCanvas = document.createElement('canvas'); fogCanvas.width = 320; fogCanvas.height = 200;
+    fogCanvas = document.createElement('canvas'); fogCanvas.width = Math.round(map.w / 10); fogCanvas.height = Math.round(map.h / 10);
     fogTex = new T.CanvasTexture(fogCanvas);
     fogPlane = new T.Mesh(new T.PlaneGeometry(map.w, map.h), new T.MeshBasicMaterial({ map: fogTex, transparent: true, depthWrite: false }));
     fogPlane.rotation.x = -Math.PI / 2; fogPlane.position.set(map.w / 2, 1.5, map.h / 2);
@@ -602,6 +602,11 @@ const R3D = (() => {
           ctx.beginPath(); ctx.moveTo(q.x - 4, q.y - 5); ctx.lineTo(q.x + 4, q.y - 5); ctx.lineTo(q.x + 4, q.y); ctx.lineTo(q.x, q.y + 4); ctx.lineTo(q.x - 4, q.y); ctx.closePath(); ctx.fill();
         }
       }
+    }
+    // Fortress health.
+    if (v.snap.hq) for (const p of [1, 2]) {
+      const h = G.map.hq[p], q = project(h.x, h.y, 125);
+      if (!q.behind) drawHqBar(ctx, q.x, q.y, v.snap.hq[p], p, 1);
     }
     // Ability range and blast preview.
     const circle = (x, y, r, stroke, fill, dash) => {

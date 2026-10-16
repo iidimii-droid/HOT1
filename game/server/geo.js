@@ -45,7 +45,7 @@ class Grid {
     this.cols = Math.ceil(map.w / CELL);
     this.rows = Math.ceil(map.h / CELL);
     this.blocked = new Uint8Array(this.cols * this.rows);
-    const solids = [...map.buildings, ...map.walls];
+    const solids = [...map.buildings, ...map.walls, ...(map.blocks || [])];
     this.solids = solids;
     this.inflate = inflate;
     for (let r = 0; r < this.rows; r++) {

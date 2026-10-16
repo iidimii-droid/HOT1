@@ -111,9 +111,9 @@ class AI {
       if (score < bestScore) { bestScore = score; best = pt; }
     }
     if (!best) {
-      // Everything is ours: hold the victory point closest to the enemy base.
-      const ehq = MAP.hq[3 - this.p];
-      best = g.points.filter(p => p.type === 'vp').sort((a, b) => Math.hypot(a.x - ehq.x, a.y - ehq.y) - Math.hypot(b.x - ehq.x, b.y - ehq.y))[0];
+      // Everything is ours: march on the enemy HQ.
+      if (s.order.type !== 'attackhq') this.cmd({ type: 'attackhq', ids: [s.id] });
+      return;
     }
     if (goal === best && s.order.type !== 'idle') return;
     this.goals.set(s.id, best.id);
