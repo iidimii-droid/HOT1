@@ -36,7 +36,7 @@ ${modules}
           game = new Game();
           const ai = new AI(game, 2);
           const name = String(msg.name || '').replace(/[^\\w \\-]/g, '').trim().slice(0, 16) || 'Commander';
-          post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], schemes: resolveSchemes(msg.scheme, 'crimson'), map: MAP, units: UNITS, weapons: WEAPONS,
+          post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], schemes: resolveSchemes(msg.scheme, 'crimson'), ai: true, map: MAP, units: UNITS, weapons: WEAPONS,
             abilities: ABILITIES, econ: ECON, tickRate: TICK_RATE });
           timer = setInterval(() => {
             ai.update();
@@ -44,6 +44,8 @@ ${modules}
             deliver(game.snapshot());
             if (game.over) clearInterval(timer);
           }, 1000 / TICK_RATE);
+        } else if (msg.t === 'leave') {
+          clearInterval(timer); game = null;
         } else if (msg.t === 'cmd' && game) {
           const err = game.command(1, msg.c);
           if (err) post({ t: 'err', msg: err });

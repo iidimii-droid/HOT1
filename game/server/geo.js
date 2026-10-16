@@ -46,6 +46,8 @@ class Grid {
     this.rows = Math.ceil(map.h / CELL);
     this.blocked = new Uint8Array(this.cols * this.rows);
     const solids = [...map.buildings, ...map.walls];
+    this.solids = solids;
+    this.inflate = inflate;
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const x = c * CELL, y = r * CELL;
@@ -65,6 +67,8 @@ class Grid {
   }
   center(i) { return { x: (i % this.cols) * CELL + CELL / 2, y: Math.floor(i / this.cols) * CELL + CELL / 2 }; }
   isBlockedAt(x, y) { return this.blocked[this.cellOf(x, y)] === 1; }
+  // Exact check: does a circle of radius r at (x, y) clear every obstacle?
+  pointFree(x, y, r) { return this.solids.every(s => !circleRectPush(x, y, r, s)); }
 
   nearestOpen(i) {
     if (!this.blocked[i]) return i;
@@ -100,7 +104,9 @@ class Grid {
   findPath(sx, sy, tx, ty) {
     let start = this.nearestOpen(this.cellOf(sx, sy));
     let goal = this.nearestOpen(this.cellOf(tx, ty));
-    const goalPt = goal === this.cellOf(tx, ty) ? { x: tx, y: ty } : this.center(goal);
+    // A blocked cell can still hold a clear spot (e.g. right behind sandbags).
+    const exact = goal === this.cellOf(tx, ty) || this.pointFree(tx, ty, this.inflate - 3);
+    const goalPt = exact ? { x: tx, y: ty } : this.center(goal);
     if (this.clearLine(sx, sy, goalPt.x, goalPt.y)) return [goalPt];
 
     const n = this.blocked.length, cols = this.cols;

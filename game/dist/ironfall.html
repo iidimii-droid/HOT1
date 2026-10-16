@@ -71,7 +71,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
 #vp-row { display: flex; gap: 6px; }
 .vp { width: 18px; height: 18px; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: #666; }
 #clock { color: var(--muted); font-variant-numeric: tabular-nums; }
-#btn-sound { padding: 4px 10px; }
+#btn-sound, #btn-menu { padding: 4px 10px; }
 
 #cards { position: fixed; top: 52px; left: 8px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100% - 230px); overflow-y: auto; }
 .card { width: 150px; background: var(--panel); border: 1px solid var(--line); padding: 4px 6px; cursor: pointer; font-size: 12px; }
@@ -123,7 +123,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
 #queue .q { background: #262b20; border: 1px solid var(--line); padding: 2px 6px; font-size: 11px; cursor: pointer; }
 #queue .q:hover { border-color: var(--p2); }
 
-#endscreen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000a; }
+#endscreen, .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000a; }
 #endscreen .menu-box { text-align: center; }
 
 @media (max-width: 900px) {
@@ -160,12 +160,12 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
         <li><b>Win</b> by holding more of the 3 <b>victory points</b> (stars) than the enemy. Their tickets drain until 0.</li>
         <li><b>Left-click / drag</b> to select squads. <b>Right-click</b> to move, or right-click an enemy to attack.</li>
         <li><b>Rally point:</b> left-click your <b>HQ</b> (or press <b>H</b>), then right-click the map. New units walk there.</li>
-        <li><b>Q</b> then click: attack-move. <b>E</b> stop. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
+        <li><b>A</b> (or <b>Q</b>) then click: attack-move, and every soldier fires at the nearest enemy in range. <b>E</b> stop. <b>Esc</b> cancels the last unit in production. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
         <li><b>G</b> then click: squad ability (frag grenade, jump pack).</li>
         <li>Capture <b>R</b> (requisition) and <b>P</b> (power) points to fund your army. Build with <b>Z X C V B</b>.</li>
-        <li>Stay near <b>sandbags, walls and ruins</b> (green shield) or in <b>craters</b> (yellow) for cover.</li>
+        <li><b>Cover:</b> order a squad next to <b>sandbags, walls or ruins</b> and the soldiers spread out behind them (green shield). <b>Craters</b> give light cover (yellow).</li>
         <li>Heavy Support teams <b>suppress</b> and <b>pin</b> infantry. Use Lance teams against tanks.</li>
-        <li>Camera: <b>W A S D</b> or arrow keys, <b>hold right-click and drag</b>, screen edges, or click the minimap. Mouse wheel zooms. <b>Ctrl+1–9</b> sets groups.</li>
+        <li>Camera: <b>W A S D</b> or arrow keys (A also starts attack-move when squads are selected), <b>hold right-click and drag</b>, screen edges, or click the minimap. Mouse wheel zooms. <b>Ctrl+1–9</b> sets groups.</li>
       </ul>
     </details>
   </div>
@@ -195,6 +195,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
     </div>
     <div id="clock">0:00</div>
     <button id="btn-sound" title="Toggle sound (M)">♪</button>
+    <button id="btn-menu" title="Menu">Menu</button>
   </div>
   <div id="cards"></div>
   <div id="toasts"></div>
@@ -206,7 +207,8 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
       <div id="queue"></div>
     </div>
   </div>
-  <div id="endscreen" class="hidden"><div class="menu-box"><h1 id="end-title"></h1><p id="end-sub"></p><button id="btn-again" class="primary">Back to menu</button></div></div>
+  <div id="endscreen" class="hidden"><div class="menu-box"><h1 id="end-title"></h1><p id="end-sub"></p><button id="btn-again2" class="primary">Play again</button><button id="btn-again">Back to menu</button></div></div>
+  <div id="pausemenu" class="overlay hidden"><div class="menu-box"><h2>Menu</h2><button id="btn-resume" class="primary">Resume</button><button id="btn-restart">Restart match</button><button id="btn-exit">Exit to main menu</button><p class="note">The match keeps running while this menu is open.</p></div></div>
 </div>
 <script>
 
@@ -244,27 +246,27 @@ const WEAPONS = {
 // the last entry repeats for any extra models.
 const UNITS = {
   tactical: {
-    name: 'Tactical Squad', short: 'TAC', models: 5, hp: 80, speed: 70, sight: 330,
+    name: 'Tactical Squad', short: 'TAC', models: 5, hp: 80, speed: 80, sight: 330,
     weapons: ['rifle'], cost: { req: 300, pow: 0 }, build: 18, pop: 6, reinforce: 45,
     ability: 'grenade', desc: 'Versatile line infantry. Frag grenade (G).',
   },
   assault: {
-    name: 'Assault Squad', short: 'ASL', models: 4, hp: 95, speed: 105, sight: 300,
+    name: 'Assault Squad', short: 'ASL', models: 4, hp: 95, speed: 115, sight: 300,
     weapons: ['pistol'], melee: 'blade', cost: { req: 320, pow: 20 }, build: 22, pop: 6, reinforce: 55,
     ability: 'jump', desc: 'Jump-pack shock troops. Deadly in melee. Jump (G).',
   },
   heavy: {
-    name: 'Heavy Support Team', short: 'HVY', models: 3, hp: 80, speed: 55, sight: 360,
+    name: 'Heavy Support Team', short: 'HVY', models: 3, hp: 80, speed: 63, sight: 360,
     weapons: ['repeater', 'rifle'], cost: { req: 280, pow: 0 }, build: 20, pop: 5, reinforce: 45,
     desc: 'Repeater suppresses infantry. Must set up to fire.',
   },
   lance: {
-    name: 'Lance Team', short: 'LNC', models: 3, hp: 80, speed: 60, sight: 360,
+    name: 'Lance Team', short: 'LNC', models: 3, hp: 80, speed: 68, sight: 360,
     weapons: ['lance', 'rifle'], cost: { req: 300, pow: 45 }, build: 22, pop: 5, reinforce: 50,
     desc: 'Anti-armor. Weak against infantry.',
   },
   tank: {
-    name: 'Warhound Tank', short: 'TNK', models: 1, hp: 900, speed: 85, sight: 340, armor: true,
+    name: 'Warhound Tank', short: 'TNK', models: 1, hp: 900, speed: 95, sight: 340, armor: true,
     weapons: ['cannon'], coax: 'coax', cost: { req: 380, pow: 160 }, build: 35, pop: 12, radius: 22,
     desc: 'Main battle tank. Shrugs off small arms.',
   },
@@ -387,6 +389,8 @@ class Grid {
     this.rows = Math.ceil(map.h / CELL);
     this.blocked = new Uint8Array(this.cols * this.rows);
     const solids = [...map.buildings, ...map.walls];
+    this.solids = solids;
+    this.inflate = inflate;
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const x = c * CELL, y = r * CELL;
@@ -406,6 +410,8 @@ class Grid {
   }
   center(i) { return { x: (i % this.cols) * CELL + CELL / 2, y: Math.floor(i / this.cols) * CELL + CELL / 2 }; }
   isBlockedAt(x, y) { return this.blocked[this.cellOf(x, y)] === 1; }
+  // Exact check: does a circle of radius r at (x, y) clear every obstacle?
+  pointFree(x, y, r) { return this.solids.every(s => !circleRectPush(x, y, r, s)); }
 
   nearestOpen(i) {
     if (!this.blocked[i]) return i;
@@ -441,7 +447,9 @@ class Grid {
   findPath(sx, sy, tx, ty) {
     let start = this.nearestOpen(this.cellOf(sx, sy));
     let goal = this.nearestOpen(this.cellOf(tx, ty));
-    const goalPt = goal === this.cellOf(tx, ty) ? { x: tx, y: ty } : this.center(goal);
+    // A blocked cell can still hold a clear spot (e.g. right behind sandbags).
+    const exact = goal === this.cellOf(tx, ty) || this.pointFree(tx, ty, this.inflate - 3);
+    const goalPt = exact ? { x: tx, y: ty } : this.center(goal);
     if (this.clearLine(sx, sy, goalPt.x, goalPt.y)) return [goalPt];
 
     const n = this.blocked.length, cols = this.cols;
@@ -718,22 +726,69 @@ class Game {
     x = clamp(x, 20, MAP.w - 20); y = clamp(y, 20, MAP.h - 20);
     s.order = { type: 'move', x, y };
     s.amove = amove;
-    this.pathModels(s, x, y);
+    this.pathModels(s, x, y, true);
   }
 
-  pathModels(s, x, y) {
+  pathModels(s, x, y, useCover = false) {
     const grid = s.def.armor ? tankGrid : infGrid;
     const n = s.models.length;
     const c = this.centroid(s);
     const ang = Math.atan2(y - c.y, x - c.x);
-    // Line formation perpendicular to the direction of travel.
+    // Infantry ordered next to cover spread out along it, one soldier per spot.
+    const spots = useCover && !s.def.armor ? this.coverSpots(x, y) : [];
+    const assigned = new Map();
+    if (spots.length >= Math.min(n, 2)) {
+      const free = [...s.models];
+      for (const spot of spots.slice(0, n)) {
+        let bi = 0, bd = Infinity;
+        free.forEach((m, i) => { const d = dist(m.x, m.y, spot.x, spot.y); if (d < bd) { bd = d; bi = i; } });
+        assigned.set(free[bi], spot);
+        free.splice(bi, 1);
+      }
+    }
+    // Everyone else forms a line perpendicular to the direction of travel.
     s.models.forEach((m, i) => {
+      const spot = assigned.get(m);
+      if (spot) { m.path = grid.findPath(m.x, m.y, spot.x, spot.y); return; }
       const k = i - (n - 1) / 2;
       let tx = x + Math.cos(ang + Math.PI / 2) * k * 25 - Math.cos(ang) * Math.abs(k) * 7;
       let ty = y + Math.sin(ang + Math.PI / 2) * k * 25 - Math.sin(ang) * Math.abs(k) * 7;
       if (grid.isBlockedAt(tx, ty)) { tx = x; ty = y; }
       m.path = grid.findPath(m.x, m.y, tx, ty);
     });
+  }
+
+  // Standing spots in cover near (x, y), closest first. Spots sit on the side
+  // of walls, sandbags and ruins facing the click, or inside craters.
+  coverSpots(x, y) {
+    const R = 95, off = INF_RADIUS + 5, gap = 23, spots = [];
+    for (const o of solids) {
+      const cx = clamp(x, o.x, o.x + o.w), cy = clamp(y, o.y, o.y + o.h);
+      if (dist(x, y, cx, cy) > R) continue;
+      const ex = x < o.x ? o.x - x : x > o.x + o.w ? x - o.x - o.w : 0;
+      const ey = y < o.y ? o.y - y : y > o.y + o.h ? y - o.y - o.h : 0;
+      if (!ex && !ey) continue;
+      if (ey >= ex) {
+        const sy = y < o.y ? o.y - off : o.y + o.h + off;
+        for (let sx = o.x + 10; sx <= o.x + o.w - 10; sx += gap) spots.push({ x: sx, y: sy });
+        if (o.w < 30) spots.push({ x: o.x + o.w / 2, y: sy });
+      } else {
+        const sx = x < o.x ? o.x - off : o.x + o.w + off;
+        for (let sy = o.y + 10; sy <= o.y + o.h - 10; sy += gap) spots.push({ x: sx, y: sy });
+        if (o.h < 30) spots.push({ x: sx, y: o.y + o.h / 2 });
+      }
+    }
+    for (const cr of MAP.craters) {
+      if (dist(x, y, cr.x, cr.y) > R + cr.r) continue;
+      const k = Math.max(3, Math.floor((Math.PI * 2 * cr.r * 0.5) / gap));
+      for (let i = 0; i < k; i++) {
+        const a = (i / k) * Math.PI * 2;
+        spots.push({ x: cr.x + Math.cos(a) * cr.r * 0.5, y: cr.y + Math.sin(a) * cr.r * 0.5 });
+      }
+    }
+    return spots
+      .filter(p => infGrid.pointFree(p.x, p.y, INF_RADIUS) && dist(x, y, p.x, p.y) < R + 30)
+      .sort((a, b) => dist(x, y, a.x, a.y) - dist(x, y, b.x, b.y));
   }
 
   halt(s) {
@@ -853,7 +908,7 @@ class Game {
     const halted = o.type === 'move' && s.amove && s.target;
     const pinned = this.isPinned(s) && !s.retreating;
     let speed = s.def.speed;
-    if (s.retreating) speed *= 1.3;
+    if (s.retreating) speed *= 1.7;
     else if (this.isSuppressed(s)) speed *= 0.5;
 
     let moving = 0;
@@ -1065,15 +1120,33 @@ class Game {
           this.fire(s, m, cw, 'coax', t, victim, accMul);
         }
       }
-      if (m.cd > 0 || d > w.range) continue;
+      if (m.cd > 0) continue;
       if (w.setup && m.still < w.setup) continue;
-      if (!this.lineOfSight(m.x, m.y, victim.x, victim.y)) continue;
+      let tt = t;
       // Riflemen in anti-tank teams don't waste shots on armor.
-      if (t.def.armor && w.pen < 0.5 && this.hasAntiTank(s)) continue;
+      const skipArmor = w.pen < 0.5 && this.hasAntiTank(s);
+      if (d > w.range || !this.lineOfSight(m.x, m.y, victim.x, victim.y) || (t.def.armor && skipArmor)) {
+        // The squad's target is out of this soldier's reach: shoot the nearest enemy he can hit.
+        const alt = this.modelTarget(s, m, w, skipArmor);
+        if (!alt) continue;
+        tt = alt.t; victim = alt.v;
+      }
       m.cd = w.cd * (0.9 + this.rand() * 0.2);
       if (!m.moved || s.def.armor) m.face = turnToward(m.face, Math.atan2(victim.y - m.y, victim.x - m.x), Math.PI);
-      this.fire(s, m, w, wname, t, victim, accMul * (m.moved && !w.melee ? 0.7 : 1));
+      this.fire(s, m, w, wname, tt, victim, accMul * (m.moved && !w.melee ? 0.7 : 1));
     }
+  }
+
+  modelTarget(s, m, w, skipArmor) {
+    let best = null, bd = w.range;
+    for (const t of this.squads.values()) {
+      if (t.owner === s.owner || (skipArmor && t.def.armor)) continue;
+      for (const v of t.models) {
+        const d = dist(m.x, m.y, v.x, v.y);
+        if (d <= bd && this.lineOfSight(m.x, m.y, v.x, v.y)) { bd = d; best = { t, v }; }
+      }
+    }
+    return best;
   }
 
   nearestModel(t, m) {
@@ -1218,10 +1291,10 @@ class Game {
       else if (pt.v <= -1) pt.owner = 2;
       else if (pt.owner === 1 && pt.v <= 0) pt.owner = 0;
       else if (pt.owner === 2 && pt.v >= 0) pt.owner = 0;
-      if (pt.owner !== prev && pt.owner) {
+      if (pt.owner !== prev) {
         const label = pt.type === 'vp' ? 'Victory point' : pt.type === 'req' ? 'Requisition point' : 'Power point';
-        this.msgs.push({ p: pt.owner, text: `${label} captured`, kind: 'cap' });
-        this.msgs.push({ p: 3 - pt.owner, text: `${label} lost`, kind: 'lostpt' });
+        if (pt.owner) this.msgs.push({ p: pt.owner, text: `${label} captured`, kind: 'cap' });
+        if (prev) this.msgs.push({ p: prev, text: `${label} lost`, kind: 'lostpt' });
       }
     }
   }
@@ -1437,7 +1510,7 @@ module.exports = { AI };
           game = new Game();
           const ai = new AI(game, 2);
           const name = String(msg.name || '').replace(/[^\w \-]/g, '').trim().slice(0, 16) || 'Commander';
-          post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], schemes: resolveSchemes(msg.scheme, 'crimson'), map: MAP, units: UNITS, weapons: WEAPONS,
+          post({ t: 'start', you: 1, names: ['', name, 'Iron AI'], schemes: resolveSchemes(msg.scheme, 'crimson'), ai: true, map: MAP, units: UNITS, weapons: WEAPONS,
             abilities: ABILITIES, econ: ECON, tickRate: TICK_RATE });
           timer = setInterval(() => {
             ai.update();
@@ -1445,6 +1518,8 @@ module.exports = { AI };
             deliver(game.snapshot());
             if (game.over) clearInterval(timer);
           }, 1000 / TICK_RATE);
+        } else if (msg.t === 'leave') {
+          clearInterval(timer); game = null;
         } else if (msg.t === 'cmd' && game) {
           const err = game.command(1, msg.c);
           if (err) post({ t: 'err', msg: err });
@@ -2090,7 +2165,22 @@ $('btn-join').onclick = () => {
   connect(() => send({ t: 'join', code, name: playerName(), scheme }));
 };
 $('btn-copy').onclick = () => { $('lobby-link').select(); navigator.clipboard?.writeText($('lobby-link').value); };
-$('btn-again').onclick = () => location.href = location.pathname;
+// In-game menu: resume, restart (vs AI) or leave the match.
+function leaveMatch() {
+  send({ t: 'leave' });
+  G = null;
+  for (const id of ['endscreen', 'pausemenu']) $(id).classList.add('hidden');
+  toastBox.innerHTML = '';
+}
+function exitToMenu() { leaveMatch(); show('menu'); }
+function restartMatch() { leaveMatch(); send({ t: 'ai', name: playerName(), scheme }); }
+function togglePause(open) { $('pausemenu').classList.toggle('hidden', !open); }
+$('btn-menu').onclick = () => togglePause(true);
+$('btn-resume').onclick = () => togglePause(false);
+$('btn-restart').onclick = restartMatch;
+$('btn-exit').onclick = exitToMenu;
+$('btn-again').onclick = exitToMenu;
+$('btn-again2').onclick = restartMatch;
 if (window.IronfallLocal) {
   $('btn-create').hidden = true;
   document.querySelector('.join-row').hidden = true;
@@ -2149,8 +2239,10 @@ function beginMatch(m) {
   $('tk-name1').textContent = m.names[1];
   $('tk-name2').textContent = m.names[2];
   buildProdButtons();
-  requestAnimationFrame(frame);
+  for (const id of ['btn-restart', 'btn-again2']) $(id).hidden = !m.ai;
+  if (!loopRunning) { loopRunning = true; requestAnimationFrame(frame); }
 }
+let loopRunning = false;
 
 function onSnapshot(s) {
   s.recv = performance.now();
@@ -2341,7 +2433,7 @@ function resize() {
 addEventListener('resize', resize);
 
 function frame(now) {
-  if (!G) return;
+  if (!G) { loopRunning = false; return; }
   const dt = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
   sfxBudget = 0;
@@ -2744,7 +2836,7 @@ function updateHud(v) {
       <div class="meter">Suppression<div class="bar"><div class="fill" style="width:${q.sp}%;background:${q.sp >= 80 ? '#f33' : q.sp >= 40 ? '#fb3' : '#cc9'}"></div></div></div>
       <div class="meter">Veterancy ${xpNext ? `${q.xp}/${xpNext}` : 'max'}${q.rq ? ` · reinforcing ${q.rq}` : ''}</div></div>
       <div class="cmds">
-        <button data-cmd="amove" class="${G.mode === 'amove' ? 'active' : ''}">Attack-move<br>(Q)</button>
+        <button data-cmd="amove" class="${G.mode === 'amove' ? 'active' : ''}">Attack-move<br>(A)</button>
         <button data-cmd="stop">Stop<br>(E)</button>
         <button data-cmd="retreat">Retreat<br>(R)</button>
         <button data-cmd="reinforce" ${nearHq ? '' : 'disabled'} title="Squads near HQ only">Reinforce<br>(T) ${q.def.reinforce || ''}</button>
@@ -2951,7 +3043,10 @@ addEventListener('keydown', e => {
   initAudio(); audio?.resume?.();
   const k = e.key.toLowerCase();
   keys.add(e.code);
-  if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code) && !e.ctrlKey && !e.metaKey) return; // camera
+  if (e.ctrlKey || e.metaKey) { /* group keys below */ }
+  // W/S/D scroll the camera. A does too while held, and with squads selected it also starts attack-move.
+  else if (['KeyW', 'KeyS', 'KeyD'].includes(e.code)) return;
+  else if (e.code === 'KeyA') { if (!e.repeat && G.sel.size) runCommand('amove'); return; }
   if (/^[1-9]$/.test(k)) {
     if (e.ctrlKey || e.metaKey) { G.groups[k] = [...G.sel]; e.preventDefault(); toast(`Group ${k} set`); return; }
     const ids = (G.groups[k] || []).filter(id => view.squads.some(s => s.id === id));
@@ -2969,7 +3064,17 @@ addEventListener('keydown', e => {
     case 'r': runCommand('retreat'); break;
     case 't': runCommand('reinforce'); break;
     case 'g': runCommand('ability'); break;
-    case 'escape': G.mode = null; G.sel.clear(); G.hqSel = false; break;
+    case 'escape': {
+      // Close the menu, then cancel targeting, then cancel the newest unit in production.
+      const queue = G.latest ? G.latest.pl[G.you].q : [];
+      if (!$('pausemenu').classList.contains('hidden')) togglePause(false);
+      else if (G.mode) G.mode = null;
+      else if (queue.length) {
+        send({ t: 'cmd', c: { type: 'cancel', index: queue.length - 1 } });
+        toast(`${G.units[queue[queue.length - 1][0]].name} cancelled`);
+      } else { G.sel.clear(); G.hqSel = false; }
+      break;
+    }
     case 'm': $('btn-sound').click(); break;
     case ' ': centerOn([...G.sel]); e.preventDefault(); break;
     case 'home': { const h = G.map.hq[G.you]; G.cam.x = h.x - canvas.width / 2 / G.cam.z; G.cam.y = h.y - canvas.height / 2 / G.cam.z; clampCam(); break; }

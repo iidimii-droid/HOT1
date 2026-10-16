@@ -22,27 +22,27 @@ const WEAPONS = {
 // the last entry repeats for any extra models.
 const UNITS = {
   tactical: {
-    name: 'Tactical Squad', short: 'TAC', models: 5, hp: 80, speed: 70, sight: 330,
+    name: 'Tactical Squad', short: 'TAC', models: 5, hp: 80, speed: 80, sight: 330,
     weapons: ['rifle'], cost: { req: 300, pow: 0 }, build: 18, pop: 6, reinforce: 45,
     ability: 'grenade', desc: 'Versatile line infantry. Frag grenade (G).',
   },
   assault: {
-    name: 'Assault Squad', short: 'ASL', models: 4, hp: 95, speed: 105, sight: 300,
+    name: 'Assault Squad', short: 'ASL', models: 4, hp: 95, speed: 115, sight: 300,
     weapons: ['pistol'], melee: 'blade', cost: { req: 320, pow: 20 }, build: 22, pop: 6, reinforce: 55,
     ability: 'jump', desc: 'Jump-pack shock troops. Deadly in melee. Jump (G).',
   },
   heavy: {
-    name: 'Heavy Support Team', short: 'HVY', models: 3, hp: 80, speed: 55, sight: 360,
+    name: 'Heavy Support Team', short: 'HVY', models: 3, hp: 80, speed: 63, sight: 360,
     weapons: ['repeater', 'rifle'], cost: { req: 280, pow: 0 }, build: 20, pop: 5, reinforce: 45,
     desc: 'Repeater suppresses infantry. Must set up to fire.',
   },
   lance: {
-    name: 'Lance Team', short: 'LNC', models: 3, hp: 80, speed: 60, sight: 360,
+    name: 'Lance Team', short: 'LNC', models: 3, hp: 80, speed: 68, sight: 360,
     weapons: ['lance', 'rifle'], cost: { req: 300, pow: 45 }, build: 22, pop: 5, reinforce: 50,
     desc: 'Anti-armor. Weak against infantry.',
   },
   tank: {
-    name: 'Warhound Tank', short: 'TNK', models: 1, hp: 900, speed: 85, sight: 340, armor: true,
+    name: 'Warhound Tank', short: 'TNK', models: 1, hp: 900, speed: 95, sight: 340, armor: true,
     weapons: ['cannon'], coax: 'coax', cost: { req: 380, pow: 160 }, build: 35, pop: 12, radius: 22,
     desc: 'Main battle tank. Shrugs off small arms.',
   },

@@ -34,4 +34,16 @@ for (const seed of [1, 2, 3]) {
   console.log(JSON.stringify(r));
 }
 assert(results.every(r => r.kills[0] + r.kills[1] > 0), 'no combat happened');
+
+// A squad ordered next to sandbags should spread out into cover there.
+{
+  const g = new Game({ seed: 9 });
+  const sq = [...g.squads.values()].find(s => s.owner === 1);
+  const wall = MAP.walls.find(w => w.x === 1210); // vertical sandbags east of the req point
+  g.command(1, { type: 'move', ids: [sq.id], x: wall.x - 30, y: wall.y + wall.h / 2 });
+  for (let i = 0; i < 20 * 40 && sq.order.type !== 'idle'; i++) g.step();
+  const inCover = sq.models.filter(m => g.coverAt(m, { x: 2000, y: m.y }) === 2).length;
+  assert(inCover >= 4, `only ${inCover} of ${sq.models.length} models took cover`);
+  console.log(`cover: ${inCover}/${sq.models.length} models behind sandbags`);
+}
 console.log('sim-test ok');

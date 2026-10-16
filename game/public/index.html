@@ -33,12 +33,12 @@
         <li><b>Win</b> by holding more of the 3 <b>victory points</b> (stars) than the enemy. Their tickets drain until 0.</li>
         <li><b>Left-click / drag</b> to select squads. <b>Right-click</b> to move, or right-click an enemy to attack.</li>
         <li><b>Rally point:</b> left-click your <b>HQ</b> (or press <b>H</b>), then right-click the map. New units walk there.</li>
-        <li><b>Q</b> then click: attack-move. <b>E</b> stop. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
+        <li><b>A</b> (or <b>Q</b>) then click: attack-move, and every soldier fires at the nearest enemy in range. <b>E</b> stop. <b>Esc</b> cancels the last unit in production. <b>R</b> retreat to HQ (takes half damage). <b>T</b> reinforce at HQ.</li>
         <li><b>G</b> then click: squad ability (frag grenade, jump pack).</li>
         <li>Capture <b>R</b> (requisition) and <b>P</b> (power) points to fund your army. Build with <b>Z X C V B</b>.</li>
-        <li>Stay near <b>sandbags, walls and ruins</b> (green shield) or in <b>craters</b> (yellow) for cover.</li>
+        <li><b>Cover:</b> order a squad next to <b>sandbags, walls or ruins</b> and the soldiers spread out behind them (green shield). <b>Craters</b> give light cover (yellow).</li>
         <li>Heavy Support teams <b>suppress</b> and <b>pin</b> infantry. Use Lance teams against tanks.</li>
-        <li>Camera: <b>W A S D</b> or arrow keys, <b>hold right-click and drag</b>, screen edges, or click the minimap. Mouse wheel zooms. <b>Ctrl+1–9</b> sets groups.</li>
+        <li>Camera: <b>W A S D</b> or arrow keys (A also starts attack-move when squads are selected), <b>hold right-click and drag</b>, screen edges, or click the minimap. Mouse wheel zooms. <b>Ctrl+1–9</b> sets groups.</li>
       </ul>
     </details>
   </div>
@@ -68,6 +68,7 @@
     </div>
     <div id="clock">0:00</div>
     <button id="btn-sound" title="Toggle sound (M)">♪</button>
+    <button id="btn-menu" title="Menu">Menu</button>
   </div>
   <div id="cards"></div>
   <div id="toasts"></div>
@@ -79,7 +80,8 @@
       <div id="queue"></div>
     </div>
   </div>
-  <div id="endscreen" class="hidden"><div class="menu-box"><h1 id="end-title"></h1><p id="end-sub"></p><button id="btn-again" class="primary">Back to menu</button></div></div>
+  <div id="endscreen" class="hidden"><div class="menu-box"><h1 id="end-title"></h1><p id="end-sub"></p><button id="btn-again2" class="primary">Play again</button><button id="btn-again">Back to menu</button></div></div>
+  <div id="pausemenu" class="overlay hidden"><div class="menu-box"><h2>Menu</h2><button id="btn-resume" class="primary">Resume</button><button id="btn-restart">Restart match</button><button id="btn-exit">Exit to main menu</button><p class="note">The match keeps running while this menu is open.</p></div></div>
 </div>
 <script src="img/assets.js"></script>
 <script src="art.js"></script>

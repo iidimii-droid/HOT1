@@ -190,22 +190,69 @@ class Game {
     x = clamp(x, 20, MAP.w - 20); y = clamp(y, 20, MAP.h - 20);
     s.order = { type: 'move', x, y };
     s.amove = amove;
-    this.pathModels(s, x, y);
+    this.pathModels(s, x, y, true);
   }
 
-  pathModels(s, x, y) {
+  pathModels(s, x, y, useCover = false) {
     const grid = s.def.armor ? tankGrid : infGrid;
     const n = s.models.length;
     const c = this.centroid(s);
     const ang = Math.atan2(y - c.y, x - c.x);
-    // Line formation perpendicular to the direction of travel.
+    // Infantry ordered next to cover spread out along it, one soldier per spot.
+    const spots = useCover && !s.def.armor ? this.coverSpots(x, y) : [];
+    const assigned = new Map();
+    if (spots.length >= Math.min(n, 2)) {
+      const free = [...s.models];
+      for (const spot of spots.slice(0, n)) {
+        let bi = 0, bd = Infinity;
+        free.forEach((m, i) => { const d = dist(m.x, m.y, spot.x, spot.y); if (d < bd) { bd = d; bi = i; } });
+        assigned.set(free[bi], spot);
+        free.splice(bi, 1);
+      }
+    }
+    // Everyone else forms a line perpendicular to the direction of travel.
     s.models.forEach((m, i) => {
+      const spot = assigned.get(m);
+      if (spot) { m.path = grid.findPath(m.x, m.y, spot.x, spot.y); return; }
       const k = i - (n - 1) / 2;
       let tx = x + Math.cos(ang + Math.PI / 2) * k * 25 - Math.cos(ang) * Math.abs(k) * 7;
       let ty = y + Math.sin(ang + Math.PI / 2) * k * 25 - Math.sin(ang) * Math.abs(k) * 7;
       if (grid.isBlockedAt(tx, ty)) { tx = x; ty = y; }
       m.path = grid.findPath(m.x, m.y, tx, ty);
     });
+  }
+
+  // Standing spots in cover near (x, y), closest first. Spots sit on the side
+  // of walls, sandbags and ruins facing the click, or inside craters.
+  coverSpots(x, y) {
+    const R = 95, off = INF_RADIUS + 5, gap = 23, spots = [];
+    for (const o of solids) {
+      const cx = clamp(x, o.x, o.x + o.w), cy = clamp(y, o.y, o.y + o.h);
+      if (dist(x, y, cx, cy) > R) continue;
+      const ex = x < o.x ? o.x - x : x > o.x + o.w ? x - o.x - o.w : 0;
+      const ey = y < o.y ? o.y - y : y > o.y + o.h ? y - o.y - o.h : 0;
+      if (!ex && !ey) continue;
+      if (ey >= ex) {
+        const sy = y < o.y ? o.y - off : o.y + o.h + off;
+        for (let sx = o.x + 10; sx <= o.x + o.w - 10; sx += gap) spots.push({ x: sx, y: sy });
+        if (o.w < 30) spots.push({ x: o.x + o.w / 2, y: sy });
+      } else {
+        const sx = x < o.x ? o.x - off : o.x + o.w + off;
+        for (let sy = o.y + 10; sy <= o.y + o.h - 10; sy += gap) spots.push({ x: sx, y: sy });
+        if (o.h < 30) spots.push({ x: sx, y: o.y + o.h / 2 });
+      }
+    }
+    for (const cr of MAP.craters) {
+      if (dist(x, y, cr.x, cr.y) > R + cr.r) continue;
+      const k = Math.max(3, Math.floor((Math.PI * 2 * cr.r * 0.5) / gap));
+      for (let i = 0; i < k; i++) {
+        const a = (i / k) * Math.PI * 2;
+        spots.push({ x: cr.x + Math.cos(a) * cr.r * 0.5, y: cr.y + Math.sin(a) * cr.r * 0.5 });
+      }
+    }
+    return spots
+      .filter(p => infGrid.pointFree(p.x, p.y, INF_RADIUS) && dist(x, y, p.x, p.y) < R + 30)
+      .sort((a, b) => dist(x, y, a.x, a.y) - dist(x, y, b.x, b.y));
   }
 
   halt(s) {
@@ -325,7 +372,7 @@ class Game {
     const halted = o.type === 'move' && s.amove && s.target;
     const pinned = this.isPinned(s) && !s.retreating;
     let speed = s.def.speed;
-    if (s.retreating) speed *= 1.3;
+    if (s.retreating) speed *= 1.7;
     else if (this.isSuppressed(s)) speed *= 0.5;
 
     let moving = 0;
@@ -537,15 +584,33 @@ class Game {
           this.fire(s, m, cw, 'coax', t, victim, accMul);
         }
       }
-      if (m.cd > 0 || d > w.range) continue;
+      if (m.cd > 0) continue;
       if (w.setup && m.still < w.setup) continue;
-      if (!this.lineOfSight(m.x, m.y, victim.x, victim.y)) continue;
+      let tt = t;
       // Riflemen in anti-tank teams don't waste shots on armor.
-      if (t.def.armor && w.pen < 0.5 && this.hasAntiTank(s)) continue;
+      const skipArmor = w.pen < 0.5 && this.hasAntiTank(s);
+      if (d > w.range || !this.lineOfSight(m.x, m.y, victim.x, victim.y) || (t.def.armor && skipArmor)) {
+        // The squad's target is out of this soldier's reach: shoot the nearest enemy he can hit.
+        const alt = this.modelTarget(s, m, w, skipArmor);
+        if (!alt) continue;
+        tt = alt.t; victim = alt.v;
+      }
       m.cd = w.cd * (0.9 + this.rand() * 0.2);
       if (!m.moved || s.def.armor) m.face = turnToward(m.face, Math.atan2(victim.y - m.y, victim.x - m.x), Math.PI);
-      this.fire(s, m, w, wname, t, victim, accMul * (m.moved && !w.melee ? 0.7 : 1));
+      this.fire(s, m, w, wname, tt, victim, accMul * (m.moved && !w.melee ? 0.7 : 1));
     }
+  }
+
+  modelTarget(s, m, w, skipArmor) {
+    let best = null, bd = w.range;
+    for (const t of this.squads.values()) {
+      if (t.owner === s.owner || (skipArmor && t.def.armor)) continue;
+      for (const v of t.models) {
+        const d = dist(m.x, m.y, v.x, v.y);
+        if (d <= bd && this.lineOfSight(m.x, m.y, v.x, v.y)) { bd = d; best = { t, v }; }
+      }
+    }
+    return best;
   }
 
   nearestModel(t, m) {
@@ -690,10 +755,10 @@ class Game {
       else if (pt.v <= -1) pt.owner = 2;
       else if (pt.owner === 1 && pt.v <= 0) pt.owner = 0;
       else if (pt.owner === 2 && pt.v >= 0) pt.owner = 0;
-      if (pt.owner !== prev && pt.owner) {
+      if (pt.owner !== prev) {
         const label = pt.type === 'vp' ? 'Victory point' : pt.type === 'req' ? 'Requisition point' : 'Power point';
-        this.msgs.push({ p: pt.owner, text: `${label} captured`, kind: 'cap' });
-        this.msgs.push({ p: 3 - pt.owner, text: `${label} lost`, kind: 'lostpt' });
+        if (pt.owner) this.msgs.push({ p: pt.owner, text: `${label} captured`, kind: 'cap' });
+        if (prev) this.msgs.push({ p: prev, text: `${label} lost`, kind: 'lostpt' });
       }
     }
   }

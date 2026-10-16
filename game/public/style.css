@@ -68,7 +68,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
 #vp-row { display: flex; gap: 6px; }
 .vp { width: 18px; height: 18px; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: #666; }
 #clock { color: var(--muted); font-variant-numeric: tabular-nums; }
-#btn-sound { padding: 4px 10px; }
+#btn-sound, #btn-menu { padding: 4px 10px; }
 
 #cards { position: fixed; top: 52px; left: 8px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100% - 230px); overflow-y: auto; }
 .card { width: 150px; background: var(--panel); border: 1px solid var(--line); padding: 4px 6px; cursor: pointer; font-size: 12px; }
@@ -120,7 +120,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
 #queue .q { background: #262b20; border: 1px solid var(--line); padding: 2px 6px; font-size: 11px; cursor: pointer; }
 #queue .q:hover { border-color: var(--p2); }
 
-#endscreen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000a; }
+#endscreen, .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000a; }
 #endscreen .menu-box { text-align: center; }
 
 @media (max-width: 900px) {

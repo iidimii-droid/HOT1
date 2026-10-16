@@ -50,7 +50,7 @@ function startGame(room) {
   if (room.vsAI) room.ai = new AI(room.game, 2);
   for (const p of [1, 2]) {
     send(room.players[p], {
-      t: 'start', you: p, names: room.names, schemes, map: MAP, units: UNITS, weapons: WEAPONS,
+      t: 'start', you: p, names: room.names, schemes, ai: room.vsAI, map: MAP, units: UNITS, weapons: WEAPONS,
       abilities: ABILITIES, econ: ECON, tickRate: TICK_RATE,
     });
   }
@@ -83,6 +83,13 @@ wss.on('connection', ws => {
       if (!room || !room.game) return;
       const err = room.game.command(ws.slot, msg.c);
       if (err) send(ws, { t: 'err', msg: err });
+      return;
+    }
+    if (msg.t === 'leave') {
+      if (!room) return;
+      const other = room.players[3 - ws.slot];
+      if (room.game && !room.game.over) send(other, { t: 'left' });
+      closeRoom(room);
       return;
     }
     if (room) return; // already in a room

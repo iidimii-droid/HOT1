@@ -54,7 +54,10 @@ check at `/health`.
 
 - Left-click or drag to select. Shift adds to the selection. Double-click selects every squad of that type on screen.
 - Right-click to move, or right-click an enemy to attack.
-- **Q** + click: attack-move. **E**: stop. **R**: retreat. **T**: reinforce. **G** + click: ability.
+- **A** (or **Q**) + click: attack-move; each soldier fires at the nearest enemy in his range. **E**: stop. **Esc**: cancel targeting, then the newest unit in production.
+- Order infantry next to sandbags, walls, ruins or craters and the soldiers spread out into cover spots.
+- **Menu** (top right): resume, restart the match (vs AI) or exit to the main menu.
+- **R**: retreat. **T**: reinforce. **G** + click: ability.
 - **Rally point:** left-click your HQ (or press **H**), then right-click the map. New units walk there.
 - **Ctrl+1–9** sets a control group; **1–9** selects it (press twice to jump the camera there).
 - **Tab** selects all your squads. **Space** centers on the selection. **Home** jumps to HQ.

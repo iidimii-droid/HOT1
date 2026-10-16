@@ -75,7 +75,22 @@ $('btn-join').onclick = () => {
   connect(() => send({ t: 'join', code, name: playerName(), scheme }));
 };
 $('btn-copy').onclick = () => { $('lobby-link').select(); navigator.clipboard?.writeText($('lobby-link').value); };
-$('btn-again').onclick = () => location.href = location.pathname;
+// In-game menu: resume, restart (vs AI) or leave the match.
+function leaveMatch() {
+  send({ t: 'leave' });
+  G = null;
+  for (const id of ['endscreen', 'pausemenu']) $(id).classList.add('hidden');
+  toastBox.innerHTML = '';
+}
+function exitToMenu() { leaveMatch(); show('menu'); }
+function restartMatch() { leaveMatch(); send({ t: 'ai', name: playerName(), scheme }); }
+function togglePause(open) { $('pausemenu').classList.toggle('hidden', !open); }
+$('btn-menu').onclick = () => togglePause(true);
+$('btn-resume').onclick = () => togglePause(false);
+$('btn-restart').onclick = restartMatch;
+$('btn-exit').onclick = exitToMenu;
+$('btn-again').onclick = exitToMenu;
+$('btn-again2').onclick = restartMatch;
 if (window.IronfallLocal) {
   $('btn-create').hidden = true;
   document.querySelector('.join-row').hidden = true;
@@ -134,8 +149,10 @@ function beginMatch(m) {
   $('tk-name1').textContent = m.names[1];
   $('tk-name2').textContent = m.names[2];
   buildProdButtons();
-  requestAnimationFrame(frame);
+  for (const id of ['btn-restart', 'btn-again2']) $(id).hidden = !m.ai;
+  if (!loopRunning) { loopRunning = true; requestAnimationFrame(frame); }
 }
+let loopRunning = false;
 
 function onSnapshot(s) {
   s.recv = performance.now();
@@ -326,7 +343,7 @@ function resize() {
 addEventListener('resize', resize);
 
 function frame(now) {
-  if (!G) return;
+  if (!G) { loopRunning = false; return; }
   const dt = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
   sfxBudget = 0;
@@ -729,7 +746,7 @@ function updateHud(v) {
       <div class="meter">Suppression<div class="bar"><div class="fill" style="width:${q.sp}%;background:${q.sp >= 80 ? '#f33' : q.sp >= 40 ? '#fb3' : '#cc9'}"></div></div></div>
       <div class="meter">Veterancy ${xpNext ? `${q.xp}/${xpNext}` : 'max'}${q.rq ? ` · reinforcing ${q.rq}` : ''}</div></div>
       <div class="cmds">
-        <button data-cmd="amove" class="${G.mode === 'amove' ? 'active' : ''}">Attack-move<br>(Q)</button>
+        <button data-cmd="amove" class="${G.mode === 'amove' ? 'active' : ''}">Attack-move<br>(A)</button>
         <button data-cmd="stop">Stop<br>(E)</button>
         <button data-cmd="retreat">Retreat<br>(R)</button>
         <button data-cmd="reinforce" ${nearHq ? '' : 'disabled'} title="Squads near HQ only">Reinforce<br>(T) ${q.def.reinforce || ''}</button>
@@ -936,7 +953,10 @@ addEventListener('keydown', e => {
   initAudio(); audio?.resume?.();
   const k = e.key.toLowerCase();
   keys.add(e.code);
-  if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code) && !e.ctrlKey && !e.metaKey) return; // camera
+  if (e.ctrlKey || e.metaKey) { /* group keys below */ }
+  // W/S/D scroll the camera. A does too while held, and with squads selected it also starts attack-move.
+  else if (['KeyW', 'KeyS', 'KeyD'].includes(e.code)) return;
+  else if (e.code === 'KeyA') { if (!e.repeat && G.sel.size) runCommand('amove'); return; }
   if (/^[1-9]$/.test(k)) {
     if (e.ctrlKey || e.metaKey) { G.groups[k] = [...G.sel]; e.preventDefault(); toast(`Group ${k} set`); return; }
     const ids = (G.groups[k] || []).filter(id => view.squads.some(s => s.id === id));
@@ -954,7 +974,17 @@ addEventListener('keydown', e => {
     case 'r': runCommand('retreat'); break;
     case 't': runCommand('reinforce'); break;
     case 'g': runCommand('ability'); break;
-    case 'escape': G.mode = null; G.sel.clear(); G.hqSel = false; break;
+    case 'escape': {
+      // Close the menu, then cancel targeting, then cancel the newest unit in production.
+      const queue = G.latest ? G.latest.pl[G.you].q : [];
+      if (!$('pausemenu').classList.contains('hidden')) togglePause(false);
+      else if (G.mode) G.mode = null;
+      else if (queue.length) {
+        send({ t: 'cmd', c: { type: 'cancel', index: queue.length - 1 } });
+        toast(`${G.units[queue[queue.length - 1][0]].name} cancelled`);
+      } else { G.sel.clear(); G.hqSel = false; }
+      break;
+    }
     case 'm': $('btn-sound').click(); break;
     case ' ': centerOn([...G.sel]); e.preventDefault(); break;
     case 'home': { const h = G.map.hq[G.you]; G.cam.x = h.x - canvas.width / 2 / G.cam.z; G.cam.y = h.y - canvas.height / 2 / G.cam.z; clampCam(); break; }
