@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Shrink generated GLB models (textures resized and re-encoded) and write them
-to public/models/<name>.glb, which the 3D view loads next to the page.
+to public/models/<name>.json ({"glb": base64}), which the 3D view loads next to
+the page. JSON because the artifact host serves .json but not .glb.
 Raw GLBs live in art/raw/ (git-ignored). Usage: python3 tools/pack_models.py
 """
-import io, json, os, struct
+import base64, io, json, os, struct
 from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -52,7 +53,8 @@ def main():
         if not os.path.exists(p):
             print('missing', p); continue
         glb = shrink(p, tex)
-        open(os.path.join(out_dir, name + '.glb'), 'wb').write(glb)
+        with open(os.path.join(out_dir, name + '.json'), 'w') as f:
+            json.dump({'glb': base64.b64encode(glb).decode()}, f)
         print(f'{name}: {os.path.getsize(p) / 1e6:.1f} MB -> {len(glb) / 1e6:.2f} MB')
 
 

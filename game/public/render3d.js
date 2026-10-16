@@ -265,8 +265,9 @@ const R3D = (() => {
     modelsRequested = true;
     const base = window.IRONFALL_MODEL_BASE ?? 'models/';
     for (const [kind, spec] of Object.entries(MODEL_SPECS)) {
-      fetch(base + spec.file + '.glb').then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
-        .then(buf => parseModel(kind, spec, buf))
+      // Models ship as JSON-wrapped base64 GLBs (the page host serves .json, not .glb).
+      fetch(base + spec.file + '.json').then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+        .then(o => { const bin = atob(o.glb), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return parseModel(kind, spec, bytes.buffer); })
         .catch(err => console.warn(`Ironfall: ${spec.file} model unavailable, using simple shapes`, err));
     }
   }
