@@ -20,7 +20,7 @@ button.primary { background: #5a4515; border-color: var(--gold); }
 button.primary:hover { background: #75591b; }
 input { font: inherit; color: var(--text); background: #12140f; border: 1px solid var(--line); padding: 8px; border-radius: 3px; }
 
-.screen { position: fixed; inset: 0; display: flex; overflow-y: auto; padding: 16px;
+.screen { position: fixed; inset: 0; display: flex; overflow-y: auto; padding: 16px; background-size: cover; background-position: center;
   background: radial-gradient(ellipse at 50% 30%, #2a2a1c 0%, #0d0f0c 70%); }
 .menu-box { margin: auto; width: 100%; max-width: 440px; background: linear-gradient(#1b1c15f2, #101109f2); border: 2px solid var(--gold); outline: 1px solid #5a4515; outline-offset: 4px; padding: 28px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px #000a; }
 .menu-box h1 { margin: 0; font-family: 'Cinzel', Georgia, serif; font-weight: 800; font-size: 46px; letter-spacing: 8px; color: var(--gold); text-align: center; text-shadow: 0 2px 0 #000; }
@@ -88,7 +88,7 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
 .toast.good { border-color: #6c6; }
 @keyframes fade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
 
-#bottom { position: fixed; left: 0; right: 0; bottom: 0; height: 168px; display: flex; gap: 8px; padding: 8px;
+#bottom { position: fixed; left: 0; right: 0; bottom: 0; height: 186px; display: flex; gap: 8px; padding: 8px;
   background: linear-gradient(#0e100c00, #0e100cee 30%); pointer-events: none; }
 #bottom > * { pointer-events: auto; }
 #minimap { background: #000; border: 1px solid var(--line); cursor: crosshair; flex: none; }
@@ -109,8 +109,9 @@ input { font: inherit; color: var(--text); background: #12140f; border: 1px soli
 
 #prod { width: 330px; flex: none; background: var(--panel); border: 1px solid var(--line); padding: 6px; display: flex; flex-direction: column; gap: 6px; }
 #prod-btns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-#prod-btns button { padding: 4px 2px; font-size: 11px; height: 74px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+#prod-btns button { padding: 2px; font-size: 11px; height: 92px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
 #prod-btns button b { font-size: 13px; }
+#prod-btns .pico { width: 30px; height: 30px; }
 #prod-btns button .key { color: var(--muted); }
 #prod-btns button .c-req { color: var(--req); }
 #prod-btns button .c-pow { color: var(--pow); }

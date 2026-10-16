@@ -60,6 +60,9 @@ $('scheme-btns').addEventListener('click', e => {
   try { localStorage.setItem('ironfall-scheme', scheme); } catch {}
 });
 renderSchemes();
+ART.ready.then(() => {
+  if (ART.IMG.keyart) document.querySelectorAll('.screen').forEach(el => { el.style.backgroundImage = `linear-gradient(90deg, rgba(8,8,6,0.82) 0%, rgba(8,8,6,0.45) 45%, rgba(8,8,6,0.1) 100%), url(${ART.IMG.keyart.src})`; });
+});
 (function previewLoop(t) {
   if (!G) { ART.drawPreview($('scheme-preview'), scheme, t || 0); requestAnimationFrame(previewLoop); }
 })();
@@ -108,7 +111,9 @@ const ctx = canvas.getContext('2d');
 const mini = $('minimap');
 const mctx = mini.getContext('2d');
 
-function startMatch(m) {
+function startMatch(m) { ART.ready.then(() => beginMatch(m)); }
+
+function beginMatch(m) {
   show('game');
   G = {
     you: m.you, map: m.map, units: m.units, abilities: m.abilities, names: m.names, econ: m.econ,
@@ -737,8 +742,15 @@ function updateHud(v) {
 function buildProdButtons() {
   $('prod-btns').innerHTML = BUILD_LIST.map(u => {
     const d = G.units[u];
-    return `<button id="build-${u}" data-unit="${u}" title="${d.name}: ${d.desc}"><b>${d.short}</b><span>${d.name.split(' ')[0]}</span><span class="c-req">${d.cost.req}R</span><span class="c-pow">${d.cost.pow ? d.cost.pow + 'P' : '&nbsp;'}</span><span class="key">${KEY_OF[u]}</span></button>`;
+    return `<button id="build-${u}" data-unit="${u}" title="${d.name}: ${d.desc}"><canvas class="pico" width="56" height="56" data-unit="${u}"></canvas><b>${d.short}</b><span>${d.name.split(' ')[0]}</span><span class="c-req">${d.cost.req}R</span><span class="c-pow">${d.cost.pow ? d.cost.pow + 'P' : '&nbsp;'}</span><span class="key">${KEY_OF[u]}</span></button>`;
   }).join('');
+  // Unit icons drawn from the player's own sprites, facing up.
+  const icon = { tactical: 'rifle', heavy: 'repeater', assault: 'hammer', lance: 'lance' };
+  for (const cv of document.querySelectorAll('#prod-btns .pico')) {
+    const c = cv.getContext('2d'), u = cv.dataset.unit, sc = G.schemes[G.you];
+    const sp = u === 'tank' ? ART.tank(sc) : ART.marine(sc, icon[u]);
+    ART.drawSprite(c, sp, 28, 28, -Math.PI / 2, 52 / sp.box);
+  }
 }
 
 $('prod-btns').addEventListener('click', e => {

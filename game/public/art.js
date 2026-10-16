@@ -12,6 +12,22 @@ const ART = (() => {
   const SPRITE_SCALE = 3;
   const cache = new Map();
 
+  // Painted art (public/img/assets.js, generated with Higgsfield). Anything
+  // missing falls back to the procedural drawings below.
+  const IMG = {};
+  const ready = Promise.all(Object.entries(window.IRONFALL_IMAGES || {}).map(([name, src]) => new Promise(done => {
+    const im = new Image();
+    im.onload = () => { IMG[name] = im; done(); };
+    im.onerror = done;
+    im.src = src;
+  })));
+  // World-space size of each painted sprite's square frame.
+  const IMG_BOX = { rifle: 40, heavy: 42, lance: 42, hammer: 42, tank: 66, hq: 200 };
+  function painted(name, kind) {
+    const im = IMG[name];
+    return im ? { canvas: im, box: IMG_BOX[kind] } : null;
+  }
+
   function radial(c, x, y, r, hi, mid, lo) {
     const g = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
     g.addColorStop(0, hi); g.addColorStop(0.55, mid); g.addColorStop(1, lo);
@@ -28,6 +44,8 @@ const ART = (() => {
   function marine(schemeKey, kind) {
     const key = `m|${schemeKey}|${kind}`;
     if (cache.has(key)) return cache.get(key);
+    const img = painted(`${kind}_${schemeKey}`, kind);
+    if (img) { cache.set(key, img); return img; }
     const S = SCHEMES[schemeKey], box = 48;
     const cv = document.createElement('canvas');
     cv.width = cv.height = box * SPRITE_SCALE;
@@ -160,6 +178,8 @@ const ART = (() => {
   function tank(schemeKey) {
     const key = `t|${schemeKey}`;
     if (cache.has(key)) return cache.get(key);
+    const img = painted(`tank_${schemeKey}`, 'tank');
+    if (img) { cache.set(key, img); return img; }
     const S = SCHEMES[schemeKey], box = 76;
     const cv = document.createElement('canvas');
     cv.width = cv.height = box * SPRITE_SCALE;
@@ -213,6 +233,8 @@ const ART = (() => {
   function fortress(schemeKey) {
     const key = `hq|${schemeKey}`;
     if (cache.has(key)) return cache.get(key);
+    const img = painted(`hq_${schemeKey}`, 'hq');
+    if (img) { cache.set(key, img); return img; }
     const S = SCHEMES[schemeKey], box = 190, k = 2;
     const cv = document.createElement('canvas');
     cv.width = cv.height = box * k;
@@ -277,7 +299,15 @@ const ART = (() => {
     t.fillStyle = 'rgba(110,88,58,0.45)'; t.fillRect(x, y, w, h);
   }
 
+  // Fills a region with a tiling image, with `tile` world pixels per repeat.
+  function tiled(t, img, tile) {
+    const p = t.createPattern(img, 'repeat');
+    p.setTransform(new DOMMatrix().scale(tile / img.width));
+    return p;
+  }
+
   function battlefield(map) {
+    if (IMG.ground) return paintedBattlefield(map);
     const c = document.createElement('canvas');
     c.width = map.w; c.height = map.h;
     const t = c.getContext('2d');
@@ -361,6 +391,70 @@ const ART = (() => {
     return c;
   }
 
+  function paintedBattlefield(map) {
+    const c = document.createElement('canvas');
+    c.width = map.w; c.height = map.h;
+    const t = c.getContext('2d');
+    const r = rng(4242);
+    t.fillStyle = tiled(t, IMG.ground, 420); t.fillRect(0, 0, map.w, map.h);
+    // Break up the tiling with broad light and dark washes.
+    for (let i = 0; i < 260; i++) {
+      const x = r() * map.w, y = r() * map.h, rad = 80 + r() * 260;
+      const g = t.createRadialGradient(x, y, 0, x, y, rad);
+      const tone = r() < 0.5 ? '30,24,16' : '150,120,80';
+      g.addColorStop(0, `rgba(${tone},${0.12 + r() * 0.12})`); g.addColorStop(1, `rgba(${tone},0)`);
+      t.fillStyle = g; t.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    }
+    // Flagstone roads: marble texture clipped to the road shapes.
+    const roads = document.createElement('canvas'); roads.width = map.w; roads.height = map.h;
+    const rd = roads.getContext('2d');
+    rd.strokeStyle = '#000'; rd.lineCap = 'round';
+    rd.lineWidth = 64;
+    rd.beginPath(); rd.moveTo(0, 1000); rd.bezierCurveTo(800, 960, 1400, 1060, 1600, 1000); rd.bezierCurveTo(1800, 940, 2400, 1040, 3200, 1000); rd.stroke();
+    rd.lineWidth = 44;
+    for (const y of [350, 1650]) { rd.beginPath(); rd.moveTo(500, y + (y < 1000 ? 120 : -120)); rd.quadraticCurveTo(1600, y - (y < 1000 ? 80 : -80), 2700, y + (y < 1000 ? 120 : -120)); rd.stroke(); }
+    rd.beginPath(); rd.moveTo(1600, 0); rd.lineTo(1600, 2000); rd.stroke();
+    rd.globalCompositeOperation = 'source-in';
+    rd.fillStyle = tiled(rd, IMG.marble, 200); rd.fillRect(0, 0, map.w, map.h);
+    rd.fillStyle = 'rgba(90,70,40,0.45)'; rd.fillRect(0, 0, map.w, map.h);
+    t.globalAlpha = 0.85; t.drawImage(roads, 0, 0); t.globalAlpha = 1;
+    // Marble plaza around the central victory point.
+    t.save(); t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.clip();
+    t.fillStyle = tiled(t, IMG.marble, 260); t.fillRect(1380, 780, 440, 440);
+    const pg = t.createRadialGradient(1600, 1000, 120, 1600, 1000, 215);
+    pg.addColorStop(0, 'rgba(80,60,30,0.15)'); pg.addColorStop(1, 'rgba(60,45,25,0.6)');
+    t.fillStyle = pg; t.fillRect(1380, 780, 440, 440);
+    t.restore();
+    t.strokeStyle = '#a8873a'; t.lineWidth = 5; t.beginPath(); t.arc(1600, 1000, 215, 0, Math.PI * 2); t.stroke();
+    // Craters.
+    for (const cr of map.craters) {
+      if (IMG.crater) { const s = cr.r * 3.1; t.drawImage(IMG.crater, cr.x - s / 2, cr.y - s / 2, s, s); }
+    }
+    // Ruins, picked by shape and drawn with a drop shadow.
+    for (const b of map.buildings) {
+      const ar = b.w / b.h;
+      const img = ar > 1.25 ? IMG.ruin_wide : ar < 0.8 ? IMG.ruin_tall : IMG.ruin_sq;
+      if (!img) { ruin(t, b, r); continue; }
+      t.fillStyle = 'rgba(0,0,0,0.5)'; t.fillRect(b.x + 10, b.y + 12, b.w, b.h);
+      t.drawImage(img, b.x - 6, b.y - 6, b.w + 12, b.h + 12);
+    }
+    // Sandbags.
+    for (const w of map.walls) {
+      t.fillStyle = 'rgba(0,0,0,0.45)'; t.fillRect(w.x + 4, w.y + 5, w.w, w.h);
+      const horiz = w.w > w.h, len = horiz ? w.w : w.h, n = Math.max(2, Math.round(len / 13));
+      for (let i = 0; i < n; i++) {
+        const sz = len / n, x = horiz ? w.x + i * sz : w.x, y = horiz ? w.y : w.y + i * sz;
+        const bw = horiz ? sz - 1 : w.w - 1, bh = horiz ? w.h - 1 : sz - 1;
+        const g = t.createLinearGradient(x, y, x + bw, y + bh);
+        g.addColorStop(0, '#c2ad7c'); g.addColorStop(1, '#7a6a48');
+        t.fillStyle = g; rr(t, x + 0.5, y + 0.5, bw, bh, 4); t.fill();
+        t.strokeStyle = '#4a3f2a'; t.lineWidth = 1; t.stroke();
+      }
+    }
+    t.fillStyle = 'rgba(255,170,90,0.05)'; t.fillRect(0, 0, map.w, map.h);
+    return c;
+  }
+
   function ruin(t, b, r) {
     t.fillStyle = 'rgba(0,0,0,0.5)'; t.fillRect(b.x + 10, b.y + 12, b.w, b.h);
     marbleFloor(t, b.x, b.y, b.w, b.h, r, 18);
@@ -420,5 +514,5 @@ const ART = (() => {
     });
   }
 
-  return { SCHEMES, marine, tank, fortress, drawSprite, battlefield, drawPreview };
+  return { SCHEMES, IMG, ready, marine, tank, fortress, drawSprite, battlefield, drawPreview };
 })();

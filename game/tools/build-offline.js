@@ -54,7 +54,9 @@ ${modules}
 })();`;
 
 const html = read('public/index.html');
-const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="art.js">'));
+const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script src="img/assets.js">'));
+const assetsPath = path.join(root, 'public', 'img', 'assets.js');
+const assets = fs.existsSync(assetsPath) ? fs.readFileSync(assetsPath, 'utf8') : '';
 const out = `<title>Ironfall</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap">
 <style>
@@ -63,6 +65,9 @@ ${read('public/style.css')}
 ${body.trim()}
 <script>
 ${runtime}
+</script>
+<script>
+${assets}
 </script>
 <script>
 ${read('public/art.js')}
