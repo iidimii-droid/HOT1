@@ -6,6 +6,7 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
+    "build:offline": "node tools/build-offline.js",
     "test": "node test/sim-test.js && node test/net-test.js"
   },
   "engines": { "node": ">=18" },

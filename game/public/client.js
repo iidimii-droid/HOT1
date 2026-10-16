@@ -29,6 +29,8 @@ try { nameInput.value = localStorage.getItem('ironfall-name') || ''; } catch {}
 
 function connect(onOpen) {
   if (ws && ws.readyState <= 1) { onOpen(); return; }
+  // Single-file build: the match runs in this page instead of on a server.
+  if (window.IronfallLocal) { ws = window.IronfallLocal(onMessage); onOpen(); return; }
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
   ws.onopen = onOpen;
@@ -55,6 +57,11 @@ $('btn-join').onclick = () => {
 };
 $('btn-copy').onclick = () => { $('lobby-link').select(); navigator.clipboard?.writeText($('lobby-link').value); };
 $('btn-again').onclick = () => location.href = location.pathname;
+if (window.IronfallLocal) {
+  $('btn-create').hidden = true;
+  document.querySelector('.join-row').hidden = true;
+  $('offline-note').hidden = false;
+}
 const joinParam = new URLSearchParams(location.search).get('join');
 if (joinParam) $('code').value = joinParam.toUpperCase();
 
