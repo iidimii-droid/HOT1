@@ -3541,19 +3541,33 @@ const R3D = (() => {
   function loadTank() {
     const src = window.IRONFALL_MODELS && window.IRONFALL_MODELS.tank;
     if (!src || !T.GLTFLoader || tankProto) return;
-    new T.GLTFLoader().load(src, gltf => {
+    // Decode the embedded GLB here and parse it directly: the published page
+    // may block fetch() of data: URLs, which GLTFLoader.load() relies on.
+    let buf;
+    try {
+      const bin = atob(src.slice(src.indexOf(',') + 1));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      buf = bytes.buffer;
+    } catch (e) { console.warn('Ironfall: could not decode tank model', e); return; }
+    // GLTFLoader decodes textures with fetch() + createImageBitmap when it can;
+    // hiding createImageBitmap makes it use a plain <img>, which the page allows.
+    const cib = window.createImageBitmap;
+    try { window.createImageBitmap = undefined; } catch {}
+    new T.GLTFLoader().parse(buf, '', gltf => {
       const obj = gltf.scene;
       const box = new T.Box3().setFromObject(obj), size = box.getSize(new T.Vector3()), c = box.getCenter(new T.Vector3());
       obj.position.sub(c); obj.position.y += size.y / 2;
       const wrap = new T.Group(); wrap.add(obj);
-      const s = 70 / Math.max(size.x, size.z);
+      const s = 84 / Math.max(size.x, size.z);
       wrap.scale.setScalar(s);
       wrap.userData.forwardOffset = window.IRONFALL_MODELS.tankYaw || 0;
       wrap.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       tankProto = wrap;
       // Swap procedural tanks already on the field.
       for (const [id, u] of units) if (u.kind === 'tank') { scene.remove(u.obj); units.delete(id); }
-    });
+    }, err => console.warn('Ironfall: tank model failed to load', err));
+    try { window.createImageBitmap = cib; } catch {}
   }
 
   // ---- Units ---------------------------------------------------------------------------
